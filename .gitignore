@@ -16,6 +16,12 @@ dist/
 dist-ssr/
 build/
 
+# TypeScript build info
+tsconfig.tsbuildinfo
+
+# Generated seed SQL (may contain real user IDs)
+scripts/seed.sql
+
 # Environment variables — NEVER commit these
 .env
 .env.local
