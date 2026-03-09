@@ -6,9 +6,11 @@ import toast from 'react-hot-toast';
 
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
+import { useLang } from '../contexts/LangContext';
 
 export default function Login() {
   const { session, loading: authLoading } = useAuth();
+  const { t } = useLang();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -75,7 +77,7 @@ export default function Login() {
             <Dumbbell size={28} />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">SpeedyFit</h1>
-          <p className="text-sm text-gray-400 mt-1">Welcome back</p>
+          <p className="text-sm text-gray-400 mt-1">{t('login.subtitle')}</p>
         </div>
 
         {/* Form */}
@@ -83,7 +85,7 @@ export default function Login() {
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              {t('login.email')}
             </label>
             <input
               type="email"
@@ -103,7 +105,7 @@ export default function Login() {
           {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
+              {t('login.password')}
             </label>
             <div className="relative">
               <input
@@ -123,7 +125,7 @@ export default function Login() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -136,7 +138,7 @@ export default function Login() {
             disabled={loading}
             className="w-full min-h-12 bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? t('login.signingIn') : t('login.signIn')}
           </button>
         </form>
       </div>

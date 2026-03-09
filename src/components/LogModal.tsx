@@ -1,16 +1,25 @@
 // src/components/LogModal.tsx
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
+import { useLang } from '../contexts/LangContext';
+import type { TranslationKey } from '../lib/i18n';
+import type { UserName } from '../types/database';
+
+export interface AppUser {
+  id: string;
+  name: UserName;
+}
 
 interface LogModalProps {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  users: AppUser[];
 }
 
 interface FormState {
@@ -20,6 +29,11 @@ interface FormState {
   water_liters: string;
   cheat_meal: boolean;
   sleep_score: string;
+  energy_level: string;
+  waist_cm: string;
+  belly_cm: string;
+  hip_cm: string;
+  thigh_cm: string;
   notes: string;
 }
 
@@ -28,6 +42,11 @@ interface FormErrors {
   weight_kg?: string;
   water_liters?: string;
   sleep_score?: string;
+  energy_level?: string;
+  waist_cm?: string;
+  belly_cm?: string;
+  hip_cm?: string;
+  thigh_cm?: string;
   notes?: string;
 }
 
@@ -38,52 +57,81 @@ const initialForm: FormState = {
   water_liters: '',
   cheat_meal: false,
   sleep_score: '',
+  energy_level: '',
+  waist_cm: '',
+  belly_cm: '',
+  hip_cm: '',
+  thigh_cm: '',
   notes: '',
 };
 
-function validate(form: FormState): FormErrors {
+function validate(form: FormState, t: (k: TranslationKey) => string): FormErrors {
   const errors: FormErrors = {};
 
   if (!form.date) {
-    errors.date = 'Date is required.';
+    errors.date = t('modal.validDateRequired');
   } else if (form.date > format(new Date(), 'yyyy-MM-dd')) {
-    errors.date = 'Date cannot be in the future.';
+    errors.date = t('modal.validDateFuture');
   }
 
   const w = parseFloat(form.weight_kg);
   if (!form.weight_kg) {
-    errors.weight_kg = 'Weight is required.';
+    errors.weight_kg = t('modal.validWeightRequired');
   } else if (isNaN(w) || w < 30 || w > 200) {
-    errors.weight_kg = 'Weight must be 30.0–200.0 kg.';
+    errors.weight_kg = t('modal.validWeightRange');
   }
 
   const wl = parseFloat(form.water_liters);
   if (!form.water_liters) {
-    errors.water_liters = 'Water intake is required.';
+    errors.water_liters = t('modal.validWaterRequired');
   } else if (isNaN(wl) || wl < 0 || wl > 10) {
-    errors.water_liters = 'Water must be 0.0–10.0 L.';
+    errors.water_liters = t('modal.validWaterRange');
   }
 
   const ss = parseInt(form.sleep_score, 10);
   if (!form.sleep_score) {
-    errors.sleep_score = 'Sleep score is required.';
+    errors.sleep_score = t('modal.validSleepRequired');
   } else if (isNaN(ss) || ss < 1 || ss > 10) {
-    errors.sleep_score = 'Sleep score must be 1–10.';
+    errors.sleep_score = t('modal.validSleepRange');
   }
 
   if (form.notes.length > 500) {
-    errors.notes = 'Notes must be 500 characters or less.';
+    errors.notes = t('modal.validNotesLength');
+  }
+
+  // Optional fields — only validate if filled
+  if (form.energy_level) {
+    const el = parseInt(form.energy_level, 10);
+    if (isNaN(el) || el < 1 || el > 10) {
+      errors.energy_level = t('modal.validEnergyRange');
+    }
+  }
+
+  const measureFields = ['waist_cm', 'belly_cm', 'hip_cm', 'thigh_cm'] as const;
+  for (const mf of measureFields) {
+    if (form[mf]) {
+      const v = parseFloat(form[mf]);
+      if (isNaN(v) || v < 20 || v > 200) {
+        errors[mf] = t('modal.validMeasureRange');
+      }
+    }
   }
 
   return errors;
 }
 
-export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
+export default function LogModal({ open, onClose, onSaved, users }: LogModalProps) {
   const { session } = useAuth();
+  const { t } = useLang();
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [measureOpen, setMeasureOpen] = useState(false);
+
+  // Default to logged-in user
+  const myName = (session?.user.user_metadata?.user_name as UserName) ?? 'Hung';
+  const [logFor, setLogFor] = useState<UserName>(myName);
 
   // Reset form when opening
   useEffect(() => {
@@ -91,50 +139,57 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
       setForm({ ...initialForm, date: format(new Date(), 'yyyy-MM-dd') });
       setErrors({});
       setTouched(new Set());
+      setLogFor(myName);
     }
   }, [open]);
 
   const handleBlur = (field: string) => {
     setTouched((prev) => new Set(prev).add(field));
-    setErrors(validate(form));
+    setErrors(validate(form, t));
   };
 
   const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     const updated = { ...form, [key]: value };
     setForm(updated);
     if (touched.has(key)) {
-      setErrors(validate(updated));
+      setErrors(validate(updated, t));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const allErrors = validate(form);
+    const allErrors = validate(form, t);
     setErrors(allErrors);
     setTouched(new Set(Object.keys(form)));
 
     if (Object.keys(allErrors).length > 0) return;
     if (!session) {
-      toast.error('Session expired. Please log in again.');
+      toast.error(t('modal.errSession'));
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // Determine user_name from profile (we infer from the session email or metadata)
-      const userName = session.user.user_metadata?.user_name as 'Hung' | 'Nga' | undefined;
+      // Determine the user we're logging for
+      const targetUser = users.find((u) => u.name === logFor);
+      const userId = targetUser?.id ?? session.user.id;
 
       const payload = {
         date: form.date,
-        user_id: session.user.id,
-        user_name: userName || 'Hung',
+        user_id: userId,
+        user_name: logFor,
         weight_kg: parseFloat(parseFloat(form.weight_kg).toFixed(1)),
         gym_checkin: form.gym_checkin,
         water_liters: parseFloat(parseFloat(form.water_liters).toFixed(1)),
         cheat_meal: form.cheat_meal,
         sleep_score: parseInt(form.sleep_score, 10),
+        energy_level: form.energy_level ? parseInt(form.energy_level, 10) : null,
+        waist_cm: form.waist_cm ? parseFloat(parseFloat(form.waist_cm).toFixed(1)) : null,
+        belly_cm: form.belly_cm ? parseFloat(parseFloat(form.belly_cm).toFixed(1)) : null,
+        hip_cm: form.hip_cm ? parseFloat(parseFloat(form.hip_cm).toFixed(1)) : null,
+        thigh_cm: form.thigh_cm ? parseFloat(parseFloat(form.thigh_cm).toFixed(1)) : null,
         notes: form.notes.trim() || null,
       };
 
@@ -144,20 +199,20 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
 
       if (error) {
         if (error.code === '23514') {
-          toast.error('Value out of range. Please check your input.');
+          toast.error(t('modal.errRange'));
         } else if (error.code === '23505') {
-          toast('Already logged today — updating instead.', { icon: 'ℹ️' });
+          toast(t('modal.alreadyLogged'), { icon: 'ℹ️' });
         } else {
-          toast.error('Error saving. Please try again.');
+          toast.error(t('modal.errSave'));
         }
         console.error('Upsert error:', error);
       } else {
-        toast.success('Log saved!');
+        toast.success(t('modal.saved'));
         onSaved?.();
         onClose();
       }
     } catch (err) {
-      toast.error('Something went wrong. Please try again.');
+      toast.error(t('modal.errGeneric'));
       console.error('Submit error:', err);
     } finally {
       setSubmitting(false);
@@ -185,7 +240,7 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Daily Log</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{t('modal.title')}</h2>
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors duration-150 cursor-pointer"
@@ -197,10 +252,35 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+            {/* Log for user picker */}
+            {users.length >= 2 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('modal.logFor')}
+                </label>
+                <div className="flex gap-2">
+                  {users.map((u) => (
+                    <button
+                      key={u.name}
+                      type="button"
+                      onClick={() => setLogFor(u.name)}
+                      className={`flex-1 min-h-10 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer border ${
+                        logFor === u.name
+                          ? 'bg-blue-700 text-white border-blue-700'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
+                      }`}
+                    >
+                      {u.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date
+                {t('modal.date')}
               </label>
               <input
                 type="date"
@@ -220,14 +300,14 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
             {/* Weight */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Weight (kg)
+                {t('modal.weight')}
               </label>
               <input
                 type="number"
                 step="0.1"
                 min="30"
                 max="200"
-                placeholder="e.g. 85.3"
+                placeholder={t('modal.weightPlaceholder')}
                 value={form.weight_kg}
                 onChange={(e) => updateField('weight_kg', e.target.value)}
                 onBlur={() => handleBlur('weight_kg')}
@@ -243,14 +323,14 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
             {/* Water */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Water (liters)
+                {t('modal.water')}
               </label>
               <input
                 type="number"
                 step="0.1"
                 min="0"
                 max="10"
-                placeholder="e.g. 2.5"
+                placeholder={t('modal.waterPlaceholder')}
                 value={form.water_liters}
                 onChange={(e) => updateField('water_liters', e.target.value)}
                 onBlur={() => handleBlur('water_liters')}
@@ -266,14 +346,14 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
             {/* Sleep Score */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sleep Score (1–10)
+                {t('modal.sleep')}
               </label>
               <input
                 type="number"
                 min="1"
                 max="10"
                 step="1"
-                placeholder="e.g. 7"
+                placeholder={t('modal.sleepPlaceholder')}
                 value={form.sleep_score}
                 onChange={(e) => updateField('sleep_score', e.target.value)}
                 onBlur={() => handleBlur('sleep_score')}
@@ -286,6 +366,29 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
               )}
             </div>
 
+            {/* Energy Level (optional) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('modal.energy')}
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                step="1"
+                placeholder={t('modal.energyPlaceholder')}
+                value={form.energy_level}
+                onChange={(e) => updateField('energy_level', e.target.value)}
+                onBlur={() => handleBlur('energy_level')}
+                className={`w-full min-h-12 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  fieldError('energy_level') ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              {fieldError('energy_level') && (
+                <p className="text-xs text-red-600 mt-1">{fieldError('energy_level')}</p>
+              )}
+            </div>
+
             {/* Gym Check-in */}
             <label className="flex items-center gap-3 min-h-12 cursor-pointer">
               <input
@@ -294,7 +397,7 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
                 onChange={(e) => updateField('gym_checkin', e.target.checked)}
                 className="w-5 h-5 rounded border-gray-300 text-blue-700 focus:ring-blue-500 cursor-pointer"
               />
-              <span className="text-sm font-medium text-gray-700">Gym check-in today</span>
+              <span className="text-sm font-medium text-gray-700">{t('modal.gym')}</span>
             </label>
 
             {/* Cheat Meal */}
@@ -305,14 +408,59 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
                 onChange={(e) => updateField('cheat_meal', e.target.checked)}
                 className="w-5 h-5 rounded border-gray-300 text-blue-700 focus:ring-blue-500 cursor-pointer"
               />
-              <span className="text-sm font-medium text-gray-700">Cheat meal today</span>
+              <span className="text-sm font-medium text-gray-700">{t('modal.cheat')}</span>
             </label>
+
+            {/* Body Measurements (collapsible) */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMeasureOpen(!measureOpen)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <div>
+                  <span className="text-sm font-medium text-gray-700">{t('modal.bodyMeasurements')}</span>
+                  <span className="text-xs text-gray-400 ml-2">{t('modal.bodyMeasurementsSub')}</span>
+                </div>
+                {measureOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+              </button>
+              {measureOpen && (
+                <div className="px-4 py-3 space-y-3 border-t border-gray-200">
+                  {([
+                    ['waist_cm', t('modal.waist')] as const,
+                    ['belly_cm', t('modal.belly')] as const,
+                    ['hip_cm', t('modal.hip')] as const,
+                    ['thigh_cm', t('modal.thigh')] as const,
+                  ]).map(([field, label]) => (
+                    <div key={field}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="20"
+                        max="200"
+                        placeholder={t('modal.cmPlaceholder')}
+                        value={form[field]}
+                        onChange={(e) => updateField(field, e.target.value)}
+                        onBlur={() => handleBlur(field)}
+                        className={`w-full min-h-10 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          fieldError(field) ? 'border-red-400' : 'border-gray-300'
+                        }`}
+                      />
+                      {fieldError(field) && (
+                        <p className="text-xs text-red-600 mt-0.5">{fieldError(field)}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Notes */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700">
-                  Notes (optional)
+                  {t('modal.notes')}
                 </label>
                 <span
                   className={`text-xs ${
@@ -324,7 +472,7 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
               </div>
               <textarea
                 rows={3}
-                placeholder="How did today go?"
+                placeholder={t('modal.notesPlaceholder')}
                 value={form.notes}
                 onChange={(e) => updateField('notes', e.target.value)}
                 onBlur={() => handleBlur('notes')}
@@ -343,7 +491,7 @@ export default function LogModal({ open, onClose, onSaved }: LogModalProps) {
               disabled={submitting}
               className="w-full min-h-12 bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              {submitting ? 'Saving…' : 'Save Log'}
+              {submitting ? t('modal.saving') : t('modal.save')}
             </button>
           </form>
         </div>

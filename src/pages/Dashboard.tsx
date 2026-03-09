@@ -21,6 +21,8 @@ import {
 
 import { useWeightData } from '../hooks/useWeightData';
 import { useGoals } from '../hooks/useGoals';
+import { useAuth } from '../hooks/useAuth';
+import { useLang } from '../contexts/LangContext';
 import type { DailyLog, UserName } from '../types/database';
 
 import KPICard from '../components/KPICard';
@@ -81,7 +83,7 @@ function getWeeklySummary(logs: DailyLog[]) {
   const today = new Date();
   let weekStart = startOfISOWeek(today);
   let weekEnd = endOfISOWeek(today);
-  let label = 'This week';
+  let label = 'this-week';
 
   let weekLogs = logs.filter((l) => {
     const d = parseISO(l.date);
@@ -96,7 +98,7 @@ function getWeeklySummary(logs: DailyLog[]) {
       const d = parseISO(l.date);
       return d >= weekStart && d <= weekEnd;
     });
-    label = 'Last week';
+    label = 'last-week';
   }
 
   if (weekLogs.length === 0) return null;
@@ -138,6 +140,9 @@ function filterLogsByRange(logs: DailyLog[], range: '7D' | '30D' | '90D' | 'All'
 // ---- Component ----
 
 export default function Dashboard() {
+  const { session } = useAuth();
+  const { t } = useLang();
+
   // Persisted view preference — default to 'simple'
   const [view, setView] = useState<'simple' | 'advanced'>(() => {
     const stored = localStorage.getItem('speedyfit-view');
@@ -148,7 +153,32 @@ export default function Dashboard() {
   const [detailLog, setDetailLog] = useState<DailyLog | null>(null);
 
   const { logs: allLogs, loading: logsLoading, error: logsError } = useWeightData();
-  const { goal, loading: goalLoading } = useGoals();
+  const { goals, loading: goalLoading } = useGoals();
+
+  // Current user's name
+  const myName: UserName = (session?.user.user_metadata?.user_name as UserName) ?? 'Hung';
+
+  // User focus filter — defaults to logged-in user
+  const [focusUser, setFocusUser] = useState<'Hung' | 'Nga' | 'Both'>(myName);
+
+  // Split logs by user
+  const hungAllLogs = useMemo(() => allLogs.filter((l) => l.user_name === 'Hung'), [allLogs]);
+  const ngaAllLogs  = useMemo(() => allLogs.filter((l) => l.user_name === 'Nga'),  [allLogs]);
+
+  // Logs scoped to the focus selection (for KPIs, streaks, heatmap, etc.)
+  const focusedLogs = useMemo(() => {
+    if (focusUser === 'Both') return allLogs;
+    return allLogs.filter((l) => l.user_name === focusUser);
+  }, [allLogs, focusUser]);
+
+  // Goals per user
+  const hungGoal = useMemo(() => goals.find((g) => g.user_name === 'Hung') ?? null, [goals]);
+  const ngaGoal  = useMemo(() => goals.find((g) => g.user_name === 'Nga')  ?? null, [goals]);
+  const focusedGoal = focusUser === 'Hung' ? hungGoal : focusUser === 'Nga' ? ngaGoal : null;
+  // For ETA / remaining we need a single goal; fall back to logged-in user when 'Both'
+  const myGoal = focusUser === 'Both'
+    ? (myName === 'Hung' ? hungGoal : ngaGoal)
+    : focusedGoal;
 
   const handleViewChange = (v: 'simple' | 'advanced') => {
     setView(v);
@@ -157,56 +187,62 @@ export default function Dashboard() {
 
   const isAdvanced = view === 'advanced';
 
-  // Filtered logs for chart
-  const filteredLogs = useMemo(() => filterLogsByRange(allLogs, range), [allLogs, range]);
+  // KPI computations — always off the focused logs
+  // When 'Both' is selected we show the logged-in user's single-stat KPIs
+  const kpiLogs = focusUser === 'Both'
+    ? allLogs.filter((l) => l.user_name === myName)
+    : focusedLogs;
 
-  // Latest log
-  const latestLog = allLogs.length > 0 ? allLogs[allLogs.length - 1] : null;
-  const userName: UserName = latestLog?.user_name ?? 'Hung';
-
-  // KPI computations
+  const latestLog  = kpiLogs.length > 0 ? kpiLogs[kpiLogs.length - 1] : null;
+  const focusLabel: string = focusUser === 'Both' ? myName : focusUser;
   const currentWeight = latestLog?.weight_kg ?? null;
+
   const weeklyDelta = useMemo(() => {
-    if (allLogs.length < 2) return null;
+    if (kpiLogs.length < 2) return null;
     const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');
-    const weekAgoLog = [...allLogs]
-      .reverse()
-      .find((l) => l.date <= sevenDaysAgo);
+    const weekAgoLog = [...kpiLogs].reverse().find((l) => l.date <= sevenDaysAgo);
     if (!weekAgoLog || !latestLog) return null;
     return parseFloat((latestLog.weight_kg - weekAgoLog.weight_kg).toFixed(1));
-  }, [allLogs, latestLog]);
+  }, [kpiLogs, latestLog]);
 
-  const gymStreak = useMemo(() => calcStreak(allLogs, 'gym_checkin'), [allLogs]);
-  const waterStreak = useMemo(() => calcStreak(allLogs, 'water_liters'), [allLogs]);
+  const gymStreak   = useMemo(() => calcStreak(kpiLogs, 'gym_checkin'),  [kpiLogs]);
+  const waterStreak = useMemo(() => calcStreak(kpiLogs, 'water_liters'), [kpiLogs]);
 
   const progress = useMemo(() => {
-    if (!goal || !currentWeight) return 0;
-    return goalProgress(currentWeight, goal.start_weight_kg, goal.target_weight_kg);
-  }, [goal, currentWeight]);
+    if (!myGoal || !currentWeight) return 0;
+    return goalProgress(currentWeight, myGoal.start_weight_kg, myGoal.target_weight_kg);
+  }, [myGoal, currentWeight]);
 
   const eta = useMemo(() => {
-    if (!goal) return null;
-    return projectGoalDate(allLogs, goal.target_weight_kg);
-  }, [allLogs, goal]);
+    if (!myGoal) return null;
+    return projectGoalDate(kpiLogs, myGoal.target_weight_kg);
+  }, [kpiLogs, myGoal]);
 
-  const weeklySummary = useMemo(() => getWeeklySummary(allLogs), [allLogs]);
+  const weeklySummary = useMemo(() => getWeeklySummary(focusedLogs), [focusedLogs]);
 
-  // Scatter data: weight vs gym (advanced only)
+  // Scatter data: weight vs gym (advanced only) — use focused user's data
   const scatterData = useMemo(() => {
     if (!isAdvanced) return [];
-    return allLogs.map((l) => ({
+    return kpiLogs.map((l) => ({
       gym: l.gym_checkin ? 1 : 0,
       weight: l.weight_kg,
       date: l.date,
     }));
-  }, [allLogs, isAdvanced]);
+  }, [kpiLogs, isAdvanced]);
 
-  // Chart props — RLS means we only have logged-in user's data
-  const hungLogs = userName === 'Hung' ? filteredLogs : [];
-  const ngaLogs = userName === 'Nga' ? filteredLogs : [];
+  // Chart lines — respect focus filter
+  const hungLogs = useMemo(
+    () => focusUser === 'Nga' ? [] : filterLogsByRange(hungAllLogs, range),
+    [hungAllLogs, range, focusUser],
+  );
+  const ngaLogs = useMemo(
+    () => focusUser === 'Hung' ? [] : filterLogsByRange(ngaAllLogs, range),
+    [ngaAllLogs, range, focusUser],
+  );
 
-  const handleDayClick = (date: string, _user: UserName) => {
-    const log = allLogs.find((l) => l.date === date);
+  const handleDayClick = (date: string, user: UserName) => {
+    const log = allLogs.find((l) => l.date === date && l.user_name === user)
+      ?? allLogs.find((l) => l.date === date);
     if (log) setDetailLog(log);
   };
 
@@ -231,7 +267,7 @@ export default function Dashboard() {
             onClick={() => window.location.reload()}
             className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
           >
-            Retry
+            {t('dash.retry')}
           </button>
         </div>
       </div>
@@ -242,8 +278,28 @@ export default function Dashboard() {
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
       {/* Header row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('dash.title')}</h1>
         <div className="flex items-center gap-3 flex-wrap">
+          {/* User focus filter */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+            {(['Hung', 'Nga', 'Both'] as const).map((u) => (
+              <button
+                key={u}
+                onClick={() => setFocusUser(u)}
+                className={`px-3 py-1.5 transition-colors duration-150 cursor-pointer ${
+                  focusUser === u
+                    ? u === 'Hung'
+                      ? 'bg-indigo-600 text-white'
+                      : u === 'Nga'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-blue-700 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
           <ViewToggle value={view} onChange={handleViewChange} />
           {isAdvanced && (
             <DateRangePicker value={range} onChange={setRange} />
@@ -254,36 +310,36 @@ export default function Dashboard() {
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <KPICard
-          label="Current Weight"
+          label={`${focusLabel}'s ${t('dash.weight')}`}
           value={currentWeight !== null ? currentWeight.toFixed(1) : '—'}
           unit="kg"
           icon={Scale}
           delta={isAdvanced ? (weeklyDelta ?? undefined) : undefined}
         />
         <KPICard
-          label="Goal Progress"
-          value={goal ? `${progress.toFixed(0)}%` : '—'}
+          label={t('dash.goalProgress')}
+          value={myGoal ? `${progress.toFixed(0)}%` : '—'}
           icon={Target}
           variant={progress >= 100 ? 'success' : 'default'}
         />
         <KPICard
-          label="Gym Streak"
+          label={t('dash.gymStreak')}
           value={gymStreak}
-          unit="days"
+          unit={t('dash.days')}
           icon={Dumbbell}
           variant={gymStreak >= 5 ? 'success' : 'default'}
         />
         {isAdvanced ? (
           <KPICard
-            label="Water Streak"
+            label={t('dash.waterStreak')}
             value={waterStreak}
-            unit="days"
+            unit={t('dash.days')}
             icon={Droplets}
             variant={waterStreak >= 3 ? 'success' : 'default'}
           />
         ) : (
           <KPICard
-            label="Weekly Change"
+            label={t('dash.weeklyChange')}
             value={weeklyDelta !== null ? `${weeklyDelta > 0 ? '+' : ''}${weeklyDelta}` : '—'}
             unit="kg"
             icon={TrendingDown}
@@ -298,16 +354,41 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Goal Rings */}
+      {/* Goal Rings — respect focus filter */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Goal Progress</h3>
-        <div className="flex items-center justify-center gap-10">
-          {goal && currentWeight !== null && (
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">{t('dash.goalSection')}</h3>
+        <div className="flex items-center justify-center gap-10 flex-wrap">
+          {(focusUser === 'Hung' || focusUser === 'Both') && hungGoal && (() => {
+            const hungLatest = hungAllLogs.length > 0 ? hungAllLogs[hungAllLogs.length - 1] : null;
+            return hungLatest && (
+              <GoalRing
+                userName="Hung"
+                currentKg={hungLatest.weight_kg}
+                startKg={hungGoal.start_weight_kg}
+                targetKg={hungGoal.target_weight_kg}
+                size="lg"
+              />
+            );
+          })()}
+          {(focusUser === 'Nga' || focusUser === 'Both') && ngaGoal && (() => {
+            const ngaLatest = ngaAllLogs.length > 0 ? ngaAllLogs[ngaAllLogs.length - 1] : null;
+            return ngaLatest && (
+              <GoalRing
+                userName="Nga"
+                currentKg={ngaLatest.weight_kg}
+                startKg={ngaGoal.start_weight_kg}
+                targetKg={ngaGoal.target_weight_kg}
+                size="lg"
+              />
+            );
+          })()}
+          {/* Fallback if no goals */}
+          {!hungGoal && !ngaGoal && myGoal && currentWeight !== null && (
             <GoalRing
-              userName={userName}
+              userName={focusLabel as UserName}
               currentKg={currentWeight}
-              startKg={goal.start_weight_kg}
-              targetKg={goal.target_weight_kg}
+              startKg={myGoal.start_weight_kg}
+              targetKg={myGoal.target_weight_kg}
               size="lg"
             />
           )}
@@ -317,20 +398,20 @@ export default function Dashboard() {
         {isAdvanced && (
           <div className="mt-4 text-center">
             {progress >= 100 ? (
-              <p className="text-green-600 font-semibold">🎉 Goal reached!</p>
+              <p className="text-green-600 font-semibold">{t('dash.goalReached')}</p>
             ) : eta ? (
               <div className="text-sm text-gray-600">
-                <span className="font-medium">Projected goal date: </span>
+                <span className="font-medium">{t('dash.projectedDate')} </span>
                 <span className="text-blue-700 font-semibold">
                   {format(eta, 'MMMM d, yyyy')}
                 </span>
                 <p className="text-xs text-gray-400 mt-1">
-                  Based on linear regression of last 30 data points
+                  {t('dash.regressionNote')}
                 </p>
               </div>
             ) : (
               <p className="text-sm text-amber-600 font-medium">
-                Check your trend — not currently on track to lose weight
+                {t('dash.checkTrend')}
               </p>
             )}
           </div>
@@ -341,24 +422,24 @@ export default function Dashboard() {
       {!isAdvanced && weeklySummary && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-3">
-            {weeklySummary.label === 'This week' ? 'This Week' : 'Last Week'}
+            {weeklySummary.label === 'this-week' ? t('dash.thisWeek') : t('dash.lastWeek')}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{weeklySummary.gymDays}</p>
-              <p className="text-sm text-gray-500">Gym days</p>
+              <p className="text-sm text-gray-500">{t('dash.gymDays')}</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{weeklySummary.avgWater}L</p>
-              <p className="text-sm text-gray-500">Avg water</p>
+              <p className="text-sm text-gray-500">{t('dash.avgWater')}</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{weeklySummary.cheatMeals}</p>
-              <p className="text-sm text-gray-500">Cheat meals</p>
+              <p className="text-sm text-gray-500">{t('dash.cheatMeals')}</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{weeklySummary.avgSleep}</p>
-              <p className="text-sm text-gray-500">Avg sleep</p>
+              <p className="text-sm text-gray-500">{t('dash.avgSleep')}</p>
             </div>
           </div>
         </div>
@@ -371,11 +452,11 @@ export default function Dashboard() {
             <DateRangePicker value={range} onChange={setRange} />
           </div>
         )}
-        <WeightChart
+      <WeightChart
           hungLogs={hungLogs}
           ngaLogs={ngaLogs}
-          hungGoal={80.0}
-          ngaGoal={55.2}
+          hungGoal={hungGoal?.target_weight_kg ?? 80.0}
+          ngaGoal={ngaGoal?.target_weight_kg ?? 55.2}
           range={range}
           showAdvanced={isAdvanced}
           onDayClick={handleDayClick}
@@ -386,19 +467,19 @@ export default function Dashboard() {
       {isAdvanced && (
         <>
           {/* Habit Heatmap */}
-          <HabitHeatmap logs={allLogs} days={30} />
+          <HabitHeatmap logs={focusedLogs} days={30} />
 
           {/* Weekly Summary Bar (week-over-week comparison) */}
-          <WeeklySummaryBar logs={allLogs} weeksToShow={4} />
+          <WeeklySummaryBar logs={focusedLogs} weeksToShow={4} />
 
           {/* Scatter plot: Weight vs Gym Check-in Correlation */}
           {scatterData.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                Weight vs Gym Correlation
+                {t('dash.scatter')}
               </h3>
               <p className="text-xs text-gray-400 mb-3">
-                X = Gym (0 = rest, 1 = gym day) · Y = Weight (kg)
+                {t('dash.scatterSub')}
               </p>
               <div className="w-full overflow-x-auto">
                 <div className="min-w-[400px]">
@@ -437,7 +518,7 @@ export default function Dashboard() {
                       />
                       <Scatter
                         data={scatterData}
-                        fill={userName === 'Hung' ? '#6366f1' : '#10b981'}
+                        fill={focusUser === 'Nga' ? '#10b981' : '#6366f1'}
                         fillOpacity={0.6}
                       />
                     </ScatterChart>
@@ -451,54 +532,54 @@ export default function Dashboard() {
           <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-3">
               <Calendar size={20} className="inline mr-2 text-gray-400" />
-              Projected ETA Detail
+              {t('dash.etaTitle')}
             </h3>
             {progress >= 100 ? (
               <div className="text-center py-4">
-                <p className="text-2xl font-bold text-green-600">Goal reached!</p>
+                <p className="text-2xl font-bold text-green-600">{t('dash.goalReached')}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Congratulations, {userName}! 🎉
+                  {t('dash.congrats')} {focusLabel}! 🎉
                 </p>
               </div>
             ) : eta ? (
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Target weight</span>
+                  <span className="text-gray-500">{t('dash.targetWeight')}</span>
                   <span className="font-medium text-gray-900">
-                    {goal?.target_weight_kg.toFixed(1)} kg
+                    {myGoal?.target_weight_kg.toFixed(1)} kg
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Current weight</span>
+                  <span className="text-gray-500">{t('dash.currentWeight')}</span>
                   <span className="font-medium text-gray-900">
                     {currentWeight?.toFixed(1)} kg
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Remaining</span>
+                  <span className="text-gray-500">{t('dash.remaining')}</span>
                   <span className="font-medium text-gray-900">
-                    {goal && currentWeight
-                      ? (currentWeight - goal.target_weight_kg).toFixed(1)
+                    {myGoal && currentWeight
+                      ? (currentWeight - myGoal.target_weight_kg).toFixed(1)
                       : '—'}{' '}
                     kg
                   </span>
                 </div>
                 <hr className="border-gray-100" />
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Projected date</span>
+                  <span className="text-gray-500">{t('dash.projectedDateLabel')}</span>
                   <span className="font-semibold text-blue-700">
                     {format(eta, 'MMM d, yyyy')}
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 pt-1">
-                  Linear regression on last 30 data points. Recalculates daily.
+                  {t('dash.regressionSub')}
                 </p>
               </div>
             ) : (
               <div className="text-center py-4">
-                <p className="text-amber-600 font-medium">Check your trend</p>
+                <p className="text-amber-600 font-medium">{t('dash.notOnTrack')}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Not enough data or weight is not trending down.
+                  {t('dash.notEnoughData')}
                 </p>
               </div>
             )}

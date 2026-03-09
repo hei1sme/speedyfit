@@ -6,7 +6,7 @@ import { useAuth } from './useAuth';
 import type { UserGoal } from '../types/database';
 
 interface UseGoalsReturn {
-  goal: UserGoal | null;
+  goals: UserGoal[];
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -14,13 +14,13 @@ interface UseGoalsReturn {
 
 export function useGoals(): UseGoalsReturn {
   const { session } = useAuth();
-  const [goal, setGoal] = useState<UserGoal | null>(null);
+  const [goals, setGoals] = useState<UserGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchGoal = useCallback(async () => {
+  const fetchGoals = useCallback(async () => {
     if (!session) {
-      setGoal(null);
+      setGoals([]);
       setLoading(false);
       return;
     }
@@ -31,20 +31,17 @@ export function useGoals(): UseGoalsReturn {
     try {
       const { data, error: dbError } = await supabase
         .from('user_goals')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
+        .select('*');
 
       if (dbError) {
         if (dbError.code === 'PGRST116') {
-          // No goal row — not an error
-          setGoal(null);
+          setGoals([]);
         } else {
           setError('Failed to load goal data.');
           console.error('Fetch goal error:', dbError);
         }
       } else {
-        setGoal(data);
+        setGoals(data ?? []);
       }
     } catch (err) {
       setError('No connection. Please check your internet.');
@@ -55,8 +52,8 @@ export function useGoals(): UseGoalsReturn {
   }, [session]);
 
   useEffect(() => {
-    fetchGoal();
-  }, [fetchGoal]);
+    fetchGoals();
+  }, [fetchGoals]);
 
-  return { goal, loading, error, refetch: fetchGoal };
+  return { goals, loading, error, refetch: fetchGoals };
 }

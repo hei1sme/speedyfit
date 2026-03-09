@@ -11,6 +11,11 @@ export interface DailyLog {
   water_liters: number;
   cheat_meal: boolean;
   sleep_score: number;    // 1–10
+  energy_level: number | null;  // 1–10, optional
+  waist_cm: number | null;      // optional bi-weekly
+  belly_cm: number | null;      // optional bi-weekly
+  hip_cm: number | null;        // optional bi-weekly
+  thigh_cm: number | null;      // optional bi-weekly
   notes: string | null;
 }
 

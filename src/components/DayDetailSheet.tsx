@@ -1,13 +1,15 @@
-// src/components/DayDetailSheet.tsx
+import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { X, Dumbbell, Droplets, Moon, UtensilsCrossed, StickyNote, Scale } from 'lucide-react';
+import { X, Dumbbell, Droplets, Moon, UtensilsCrossed, StickyNote, Scale, Trash2, Zap, Ruler } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { DailyLog } from '../types/database';
+import { useLang } from '../contexts/LangContext';
 
 export interface DayDetailSheetProps {
   log: DailyLog | null;   // null = closed
   onClose: () => void;
+  onDelete?: (id: string) => Promise<void>;
 }
 
 function DetailRow({
@@ -30,8 +32,22 @@ function DetailRow({
   );
 }
 
-export default function DayDetailSheet({ log, onClose }: DayDetailSheetProps) {
+export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailSheetProps) {
+  const { t } = useLang();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   if (!log) return null;
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setDeleting(true);
+    await onDelete(log.id);
+    setDeleting(false);
+    setConfirmDelete(false);
+    onClose();
+  };
 
   const dateLabel = (() => {
     try {
@@ -70,30 +86,30 @@ export default function DayDetailSheet({ log, onClose }: DayDetailSheetProps) {
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <DetailRow
             icon={Scale}
-            label="Weight"
+            label={t('detail.weight')}
             value={`${log.weight_kg.toFixed(1)} kg`}
           />
           <DetailRow
             icon={Dumbbell}
-            label="Gym"
-            value={log.gym_checkin ? 'Yes ✓' : 'No'}
+            label={t('detail.gym')}
+            value={log.gym_checkin ? t('detail.gymYes') : t('detail.gymNo')}
             color={log.gym_checkin ? 'text-green-600' : 'text-gray-400'}
           />
           <DetailRow
             icon={Droplets}
-            label="Water"
+            label={t('detail.water')}
             value={`${log.water_liters.toFixed(1)} L`}
             color={log.water_liters >= 2.0 ? 'text-green-600' : 'text-gray-900'}
           />
           <DetailRow
             icon={UtensilsCrossed}
-            label="Cheat Meal"
-            value={log.cheat_meal ? 'Yes' : 'No'}
+            label={t('detail.cheat')}
+            value={log.cheat_meal ? t('detail.cheatYes') : t('detail.cheatNo')}
             color={log.cheat_meal ? 'text-amber-600' : 'text-gray-400'}
           />
           <DetailRow
             icon={Moon}
-            label="Sleep Score"
+            label={t('detail.sleep')}
             value={`${log.sleep_score} / 10`}
             color={
               log.sleep_score >= 7
@@ -103,17 +119,93 @@ export default function DayDetailSheet({ log, onClose }: DayDetailSheetProps) {
                   : 'text-red-600'
             }
           />
+          {log.energy_level != null && (
+            <DetailRow
+              icon={Zap}
+              label={t('detail.energy')}
+              value={`${log.energy_level} / 10`}
+              color={
+                log.energy_level >= 7
+                  ? 'text-green-600'
+                  : log.energy_level >= 5
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+              }
+            />
+          )}
+
+          {/* Body measurements (show section only if any present) */}
+          {(log.waist_cm != null || log.belly_cm != null || log.hip_cm != null || log.thigh_cm != null) && (
+            <div className="mt-4 mb-2">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Ruler size={14} className="text-gray-400" />
+                <span className="text-xs text-gray-500 font-medium">{t('detail.bodyMeasure')}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {log.waist_cm != null && (
+                  <div className="bg-purple-50 rounded-lg p-2 text-center">
+                    <p className="text-xs text-gray-500">{t('detail.waist')}</p>
+                    <p className="text-sm font-semibold text-purple-700">{log.waist_cm} cm</p>
+                  </div>
+                )}
+                {log.belly_cm != null && (
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-xs text-gray-500">{t('detail.belly')}</p>
+                    <p className="text-sm font-semibold text-gray-800">{log.belly_cm} cm</p>
+                  </div>
+                )}
+                {log.hip_cm != null && (
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-xs text-gray-500">{t('detail.hip')}</p>
+                    <p className="text-sm font-semibold text-gray-800">{log.hip_cm} cm</p>
+                  </div>
+                )}
+                {log.thigh_cm != null && (
+                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                    <p className="text-xs text-gray-500">{t('detail.thigh')}</p>
+                    <p className="text-sm font-semibold text-gray-800">{log.thigh_cm} cm</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {log.notes && (
             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <StickyNote size={14} className="text-gray-400" />
-                <span className="text-xs text-gray-500 font-medium">Notes</span>
+                <span className="text-xs text-gray-500 font-medium">{t('detail.notes')}</span>
               </div>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{log.notes}</p>
             </div>
           )}
         </div>
+
+        {/* Footer with delete */}
+        {onDelete && (
+          <div className="px-5 py-4 border-t border-gray-100">
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className={`w-full min-h-10 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer flex items-center justify-center gap-2 ${
+                confirmDelete
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-white border border-red-300 text-red-600 hover:bg-red-50'
+              } disabled:opacity-50`}
+            >
+              <Trash2 size={15} />
+              {deleting ? t('detail.deleting') : confirmDelete ? t('detail.deleteConfirm') : t('detail.delete')}
+            </button>
+            {confirmDelete && (
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                {t('detail.cancel')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Slide-in animation */}

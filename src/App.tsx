@@ -6,8 +6,10 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Log from './pages/Log';
 import Rulebook from './pages/Rulebook';
+import Guides from './pages/Guides';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
+import { LangProvider } from './contexts/LangContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
@@ -31,7 +33,8 @@ export default function App() {
   const { session, loading } = useAuth();
 
   return (
-    <ErrorBoundary>
+    <LangProvider>
+      <ErrorBoundary>
       {session && !loading && <Navbar />}
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -59,8 +62,17 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/guides"
+          element={
+            <ProtectedRoute>
+              <Guides />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </ErrorBoundary>
+    </LangProvider>
   );
 }

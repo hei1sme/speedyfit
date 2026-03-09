@@ -33,7 +33,6 @@ export function useWeightData(rangeDays?: number): UseWeightDataReturn {
       let query = supabase
         .from('daily_logs')
         .select('*')
-        .eq('user_id', session.user.id)
         .order('date', { ascending: true });
 
       if (rangeDays) {
