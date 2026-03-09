@@ -3,6 +3,14 @@ node_modules/
 .pnp
 .pnp.js
 
+# AI agent toolkit (local tool, not part of project)
+.agent/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
 # Build output
 dist/
 dist-ssr/
