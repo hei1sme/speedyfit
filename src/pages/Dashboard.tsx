@@ -8,10 +8,18 @@ import {
   Droplets,
   Calendar,
   Target,
+  Zap,
+  Ruler,
+  Flame,
+  Moon,
 } from 'lucide-react';
 import {
   ScatterChart,
   Scatter,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -220,6 +228,78 @@ export default function Dashboard() {
 
   const weeklySummary = useMemo(() => getWeeklySummary(focusedLogs), [focusedLogs]);
 
+  // ---- Energy analytics ----
+  const avgEnergy = useMemo(() => {
+    const withEnergy = kpiLogs.filter(l => l.energy_level != null);
+    if (withEnergy.length === 0) return null;
+    return parseFloat((withEnergy.reduce((s, l) => s + (l.energy_level ?? 0), 0) / withEnergy.length).toFixed(1));
+  }, [kpiLogs]);
+
+  // 7-day energy trend for mini-chart
+  const energyTrendData = useMemo(() => {
+    const recent = kpiLogs.slice(-14);
+    return recent
+      .filter(l => l.energy_level != null)
+      .map(l => ({
+        date: format(parseISO(l.date), 'MMM d'),
+        energy: l.energy_level!,
+      }));
+  }, [kpiLogs]);
+
+  // Energy line chart for advanced view (full range)
+  const energyChartData = useMemo(() => {
+    if (!isAdvanced) return [];
+    const ranged = filterLogsByRange(kpiLogs, range);
+    return ranged
+      .filter(l => l.energy_level != null)
+      .map(l => ({
+        date: format(parseISO(l.date), 'MMM d'),
+        energy: l.energy_level!,
+        sleep: l.sleep_score,
+      }));
+  }, [kpiLogs, isAdvanced, range]);
+
+  // ---- Body measurement analytics ----
+  const latestMeasurement = useMemo(() => {
+    const withMeasure = kpiLogs.filter(l =>
+      l.waist_cm != null || l.belly_cm != null || l.hip_cm != null || l.thigh_cm != null
+    );
+    return withMeasure.length > 0 ? withMeasure[withMeasure.length - 1] : null;
+  }, [kpiLogs]);
+
+  // Body measurements over time (for advanced chart)
+  const bodyChartData = useMemo(() => {
+    if (!isAdvanced) return [];
+    return kpiLogs
+      .filter(l => l.waist_cm != null || l.belly_cm != null || l.hip_cm != null || l.thigh_cm != null)
+      .map(l => ({
+        date: format(parseISO(l.date), 'MMM d'),
+        waist: l.waist_cm ?? undefined,
+        belly: l.belly_cm ?? undefined,
+        hip: l.hip_cm ?? undefined,
+        thigh: l.thigh_cm ?? undefined,
+      }));
+  }, [kpiLogs, isAdvanced]);
+
+  // ---- Consistency score (% of days with all key habits met) ----
+  const consistencyScore = useMemo(() => {
+    const last30 = kpiLogs.slice(-30);
+    if (last30.length === 0) return 0;
+    const goodDays = last30.filter(l =>
+      l.gym_checkin && l.water_liters >= 2.0 && l.sleep_score >= 7
+    ).length;
+    return Math.round((goodDays / last30.length) * 100);
+  }, [kpiLogs]);
+
+  // ---- Today's tip ----
+  const todayTip = useMemo(() => {
+    if (!latestLog) return 'tipGreat';
+    if (!latestLog.gym_checkin) return 'tipGym';
+    if (latestLog.water_liters < 2.0) return 'tipWater';
+    if (latestLog.sleep_score < 7) return 'tipSleep';
+    return 'tipGreat';
+  }, [latestLog]);
+
   // Scatter data: weight vs gym (advanced only) — use focused user's data
   const scatterData = useMemo(() => {
     if (!isAdvanced) return [];
@@ -314,7 +394,7 @@ export default function Dashboard() {
           value={currentWeight !== null ? currentWeight.toFixed(1) : '—'}
           unit="kg"
           icon={Scale}
-          delta={isAdvanced ? (weeklyDelta ?? undefined) : undefined}
+          delta={weeklyDelta ?? undefined}
         />
         <KPICard
           label={t('dash.goalProgress')}
@@ -352,6 +432,74 @@ export default function Dashboard() {
             }
           />
         )}
+      </div>
+
+      {/* Secondary KPI row — energy + consistency */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        {avgEnergy !== null && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 md:p-6">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-gray-500">{t('dash.avgEnergy')}</span>
+              <Zap size={18} className="text-amber-500" />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold text-gray-900">{avgEnergy}</span>
+              <span className="text-xs text-gray-400">/ 10</span>
+            </div>
+            {/* Mini energy sparkline */}
+            {energyTrendData.length >= 3 && (
+              <div className="mt-2 h-10">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={energyTrendData}>
+                    <defs>
+                      <linearGradient id="energyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Area
+                      type="monotone"
+                      dataKey="energy"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      fill="url(#energyGrad)"
+                      dot={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 md:p-6">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm text-gray-500">{t('dash.consistency')}</span>
+            <Flame size={18} className="text-purple-500" />
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold text-gray-900">{consistencyScore}%</span>
+          </div>
+          {/* Progress bar */}
+          <div className="mt-2 h-2 bg-purple-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-purple-500 rounded-full transition-all duration-700"
+              style={{ width: `${consistencyScore}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Gym + Water + Sleep ≥ 7</p>
+        </div>
+
+        {/* Today's motivational tip */}
+        <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-6">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm text-gray-500">{t('dash.todayTip')}</span>
+            <span className="text-lg">💡</span>
+          </div>
+          <p className="text-base font-semibold text-gray-800 mt-2">
+            {t(`dash.${todayTip}` as any)}
+          </p>
+        </div>
       </div>
 
       {/* Goal Rings — respect focus filter */}
@@ -418,29 +566,127 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Simple view: weekly summary as plain numbers */}
+      {/* Simple view: enhanced weekly summary with progress bars */}
       {!isAdvanced && weeklySummary && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-3">
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">
             {weeklySummary.label === 'this-week' ? t('dash.thisWeek') : t('dash.lastWeek')}
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{weeklySummary.gymDays}</p>
-              <p className="text-sm text-gray-500">{t('dash.gymDays')}</p>
+          <div className="space-y-4">
+            {/* Gym Days */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Dumbbell size={16} className="text-indigo-500" />
+                  <span className="text-sm font-medium text-gray-700">{t('dash.gymDays')}</span>
+                </div>
+                <span className="text-sm font-bold text-gray-900">{weeklySummary.gymDays}/7</span>
+              </div>
+              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${(weeklySummary.gymDays / 7) * 100}%` }}
+                />
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{weeklySummary.avgWater}L</p>
-              <p className="text-sm text-gray-500">{t('dash.avgWater')}</p>
+
+            {/* Avg Water */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Droplets size={16} className="text-cyan-500" />
+                  <span className="text-sm font-medium text-gray-700">{t('dash.avgWater')}</span>
+                </div>
+                <span className="text-sm font-bold text-gray-900">{weeklySummary.avgWater}L</span>
+              </div>
+              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    weeklySummary.avgWater >= 2.0 ? 'bg-cyan-500' : 'bg-cyan-300'
+                  }`}
+                  style={{ width: `${Math.min(100, (weeklySummary.avgWater / 3.0) * 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{weeklySummary.cheatMeals}</p>
-              <p className="text-sm text-gray-500">{t('dash.cheatMeals')}</p>
+
+            {/* Avg Sleep */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Moon size={16} className="text-violet-500" />
+                  <span className="text-sm font-medium text-gray-700">{t('dash.avgSleep')}</span>
+                </div>
+                <span className="text-sm font-bold text-gray-900">{weeklySummary.avgSleep}/10</span>
+              </div>
+              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    weeklySummary.avgSleep >= 7 ? 'bg-violet-500' : 'bg-violet-300'
+                  }`}
+                  style={{ width: `${(weeklySummary.avgSleep / 10) * 100}%` }}
+                />
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{weeklySummary.avgSleep}</p>
-              <p className="text-sm text-gray-500">{t('dash.avgSleep')}</p>
+
+            {/* Weight Delta + Cheat Meals */}
+            <div className="flex gap-4 pt-2 border-t border-gray-100">
+              <div className="flex-1 text-center">
+                <p className={`text-xl font-bold ${weeklySummary.weightDelta <= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {weeklySummary.weightDelta > 0 ? '+' : ''}{weeklySummary.weightDelta} kg
+                </p>
+                <p className="text-xs text-gray-400">{t('dash.weeklyChange')}</p>
+              </div>
+              <div className="w-px bg-gray-100" />
+              <div className="flex-1 text-center">
+                <p className={`text-xl font-bold ${weeklySummary.cheatMeals === 0 ? 'text-green-600' : 'text-amber-500'}`}>
+                  {weeklySummary.cheatMeals}
+                </p>
+                <p className="text-xs text-gray-400">{t('dash.cheatMeals')}</p>
+              </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Body Measurements card — shown in simple view when data exists */}
+      {!isAdvanced && latestMeasurement && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Ruler size={18} className="text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-900">{t('dash.latestMeasure')}</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            {format(parseISO(latestMeasurement.date), 'MMM d, yyyy')}
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {latestMeasurement.waist_cm != null && (
+              <div className="bg-purple-50 rounded-xl p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">{t('dash.waist')}</p>
+                <p className="text-2xl font-bold text-purple-700">{latestMeasurement.waist_cm}</p>
+                <p className="text-xs text-gray-400">cm</p>
+              </div>
+            )}
+            {latestMeasurement.belly_cm != null && (
+              <div className="bg-pink-50 rounded-xl p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">{t('dash.belly')}</p>
+                <p className="text-2xl font-bold text-pink-700">{latestMeasurement.belly_cm}</p>
+                <p className="text-xs text-gray-400">cm</p>
+              </div>
+            )}
+            {latestMeasurement.hip_cm != null && (
+              <div className="bg-teal-50 rounded-xl p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">{t('dash.hip')}</p>
+                <p className="text-2xl font-bold text-teal-700">{latestMeasurement.hip_cm}</p>
+                <p className="text-xs text-gray-400">cm</p>
+              </div>
+            )}
+            {latestMeasurement.thigh_cm != null && (
+              <div className="bg-slate-50 rounded-xl p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">{t('dash.thigh')}</p>
+                <p className="text-2xl font-bold text-slate-700">{latestMeasurement.thigh_cm}</p>
+                <p className="text-xs text-gray-400">cm</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -524,6 +770,120 @@ export default function Dashboard() {
                     </ScatterChart>
                   </ResponsiveContainer>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Energy Level Trend Chart */}
+          {energyChartData.length >= 3 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Zap size={20} className="text-amber-500" />
+                <h3 className="text-xl font-semibold text-gray-900">{t('dash.energyChart')}</h3>
+              </div>
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[400px]">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={energyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11, fill: '#9ca3af' }}
+                        stroke="#d1d5db"
+                      />
+                      <YAxis
+                        domain={[0, 10]}
+                        tick={{ fontSize: 12, fill: '#9ca3af' }}
+                        stroke="#d1d5db"
+                        width={30}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          fontSize: '13px',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="energy"
+                        name="Energy"
+                        stroke="#f59e0b"
+                        strokeWidth={2.5}
+                        dot={{ r: 3, fill: '#f59e0b' }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="sleep"
+                        name="Sleep"
+                        stroke="#8b5cf6"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={{ r: 2, fill: '#8b5cf6' }}
+                        activeDot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                <div className="flex items-center gap-1">
+                  <span className="w-3 h-0.5 bg-amber-500 rounded" />
+                  <span>Energy</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-3 h-0.5 bg-violet-500 rounded border-dashed" />
+                  <span>Sleep</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Body Measurements Trend Chart */}
+          {bodyChartData.length >= 2 && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Ruler size={20} className="text-gray-400" />
+                <h3 className="text-xl font-semibold text-gray-900">{t('dash.bodyChart')}</h3>
+              </div>
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[400px]">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={bodyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11, fill: '#9ca3af' }}
+                        stroke="#d1d5db"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 12, fill: '#9ca3af' }}
+                        stroke="#d1d5db"
+                        width={40}
+                        unit=" cm"
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          fontSize: '13px',
+                          borderRadius: '8px',
+                          border: '1px solid #e5e7eb',
+                        }}
+                        formatter={(value: number) => [`${value} cm`]}
+                      />
+                      <Line type="monotone" dataKey="waist" name={t('dash.waist')} stroke="#7c3aed" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                      <Line type="monotone" dataKey="belly" name={t('dash.belly')} stroke="#ec4899" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                      <Line type="monotone" dataKey="hip" name={t('dash.hip')} stroke="#14b8a6" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                      <Line type="monotone" dataKey="thigh" name={t('dash.thigh')} stroke="#64748b" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1"><span className="w-3 h-1 bg-violet-600 rounded" />{t('dash.waist')}</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-1 bg-pink-500 rounded" />{t('dash.belly')}</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-1 bg-teal-500 rounded" />{t('dash.hip')}</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-1 bg-slate-500 rounded" />{t('dash.thigh')}</div>
               </div>
             </div>
           )}
