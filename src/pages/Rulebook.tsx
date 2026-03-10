@@ -15,19 +15,19 @@ import type { LucideIcon } from 'lucide-react';
 import { useLang } from '../contexts/LangContext';
 
 const RULE_COLORS = [
-  'text-blue-700 bg-blue-50',
-  'text-indigo-600 bg-indigo-50',
-  'text-cyan-600 bg-cyan-50',
-  'text-purple-600 bg-purple-50',
-  'text-amber-600 bg-amber-50',
-  'text-green-600 bg-green-50',
+  'text-blue-700 bg-blue-50/50',
+  'text-indigo-600 bg-indigo-50/50',
+  'text-cyan-600 bg-cyan-50/50',
+  'text-purple-600 bg-purple-50/50',
+  'text-amber-600 bg-amber-50/50',
+  'text-green-600 bg-green-50/50',
 ] as const;
 
 const RULE_ICONS: LucideIcon[] = [Scale, Dumbbell, Droplets, Moon, UtensilsCrossed, TrendingDown];
 
 const GOALS_META = [
-  { name: 'Hưng', start: '95.4 kg', target: '80.0 kg', type: 'Cut', color: 'border-indigo-500 bg-indigo-50', textColor: 'text-indigo-700' },
-  { name: 'Nga',  start: '60.2 kg', target: '55.2 kg', type: 'Cut', color: 'border-emerald-500 bg-emerald-50', textColor: 'text-emerald-700' },
+  { name: 'Hưng', start: '95.4 kg', target: '80.0 kg', type: 'Cut', color: 'border-indigo-500 glass bg-indigo-50/20', textColor: 'text-indigo-700' },
+  { name: 'Nga',  start: '60.2 kg', target: '55.2 kg', type: 'Cut', color: 'border-emerald-500 glass bg-emerald-50/20', textColor: 'text-emerald-700' },
 ];
 
 export default function Rulebook() {
@@ -51,7 +51,7 @@ export default function Rulebook() {
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <BookOpen size={24} className="text-blue-700" />
+        <BookOpen size={24} className="text-indigo-600" />
         <h1 className="text-2xl font-bold text-gray-900">{t('rule.title')}</h1>
       </div>
 
@@ -84,7 +84,7 @@ export default function Rulebook() {
           {rules.map((rule) => (
             <div
               key={rule.title}
-              className="bg-white border border-gray-200 rounded-lg p-4 md:p-5 flex items-start gap-4"
+              className="rounded-2xl glass glass-hover p-4 md:p-5 flex items-start gap-4"
             >
               <div className={`shrink-0 p-2.5 rounded-lg ${rule.color}`}>
                 <rule.icon size={20} />
@@ -99,7 +99,7 @@ export default function Rulebook() {
       </div>
 
       {/* Tips */}
-      <div className="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-5">
+      <div className="mt-8 glass-subtle rounded-2xl p-5">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('rule.quickTips')}</h2>
         <ul className="space-y-2 text-sm text-gray-600 list-disc list-inside">
           {tips.map((tip, i) => <li key={i}>{tip}</li>)}

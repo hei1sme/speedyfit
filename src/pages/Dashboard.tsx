@@ -45,12 +45,12 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 
 // ---- Analytics helpers (DOC 03) ----
 
-function calcStreak(logs: DailyLog[], field: 'gym_checkin' | 'water_liters'): number {
+function calcStreak(logs: DailyLog[], field: 'gym_checkin' | 'water_liters', waterTarget = 2.0): number {
   const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
   let streak = 0;
   for (const log of sorted) {
     const pass =
-      field === 'gym_checkin' ? log.gym_checkin : log.water_liters >= 2.0;
+      field === 'gym_checkin' ? log.gym_checkin : (log.water_liters ?? 0) >= waterTarget;
     if (pass) streak++;
     else break;
   }
@@ -117,11 +117,11 @@ function getWeeklySummary(logs: DailyLog[]) {
     label,
     gymDays: weekLogs.filter((l) => l.gym_checkin).length,
     avgWater: parseFloat(
-      (weekLogs.reduce((s, l) => s + l.water_liters, 0) / weekLogs.length).toFixed(1)
+      (weekLogs.reduce((s, l) => s + (l.water_liters ?? 0), 0) / weekLogs.length).toFixed(1)
     ),
     cheatMeals: weekLogs.filter((l) => l.cheat_meal).length,
     avgSleep: parseFloat(
-      (weekLogs.reduce((s, l) => s + l.sleep_score, 0) / weekLogs.length).toFixed(1)
+      (weekLogs.reduce((s, l) => s + (l.sleep_score ?? 0), 0) / weekLogs.length).toFixed(1)
     ),
     weightDelta: parseFloat(
       (sorted[sorted.length - 1].weight_kg - sorted[0].weight_kg).toFixed(1)
@@ -213,8 +213,12 @@ export default function Dashboard() {
     return parseFloat((latestLog.weight_kg - weekAgoLog.weight_kg).toFixed(1));
   }, [kpiLogs, latestLog]);
 
+  // Dynamic settings from goals
+  const waterTarget = myGoal?.water_target_l ?? 2.0;
+  const sleepTarget = myGoal?.sleep_target ?? 7;
+
   const gymStreak   = useMemo(() => calcStreak(kpiLogs, 'gym_checkin'),  [kpiLogs]);
-  const waterStreak = useMemo(() => calcStreak(kpiLogs, 'water_liters'), [kpiLogs]);
+  const waterStreak = useMemo(() => calcStreak(kpiLogs, 'water_liters', waterTarget), [kpiLogs, waterTarget]);
 
   const progress = useMemo(() => {
     if (!myGoal || !currentWeight) return 0;
@@ -286,19 +290,19 @@ export default function Dashboard() {
     const last30 = kpiLogs.slice(-30);
     if (last30.length === 0) return 0;
     const goodDays = last30.filter(l =>
-      l.gym_checkin && l.water_liters >= 2.0 && l.sleep_score >= 7
+      l.gym_checkin && (l.water_liters ?? 0) >= waterTarget && (l.sleep_score ?? 0) >= sleepTarget
     ).length;
     return Math.round((goodDays / last30.length) * 100);
-  }, [kpiLogs]);
+  }, [kpiLogs, waterTarget, sleepTarget]);
 
   // ---- Today's tip ----
   const todayTip = useMemo(() => {
     if (!latestLog) return 'tipGreat';
     if (!latestLog.gym_checkin) return 'tipGym';
-    if (latestLog.water_liters < 2.0) return 'tipWater';
-    if (latestLog.sleep_score < 7) return 'tipSleep';
+    if ((latestLog.water_liters ?? 0) < waterTarget) return 'tipWater';
+    if ((latestLog.sleep_score ?? 0) < sleepTarget) return 'tipSleep';
     return 'tipGreat';
-  }, [latestLog]);
+  }, [latestLog, waterTarget, sleepTarget]);
 
   // Scatter data: weight vs gym (advanced only) — use focused user's data
   const scatterData = useMemo(() => {
@@ -341,11 +345,11 @@ export default function Dashboard() {
   if (logsError) {
     return (
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <div className="glass rounded-2xl border border-red-200/50 p-6 text-center">
           <p className="text-red-600 font-medium">{logsError}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
+            className="mt-3 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
           >
             {t('dash.retry')}
           </button>
@@ -361,19 +365,19 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-gray-900">{t('dash.title')}</h1>
         <div className="flex items-center gap-3 flex-wrap">
           {/* User focus filter */}
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm font-medium">
+          <div className="flex rounded-xl glass overflow-hidden text-sm font-medium">
             {(['Hung', 'Nga', 'Both'] as const).map((u) => (
               <button
                 key={u}
                 onClick={() => setFocusUser(u)}
-                className={`px-3 py-1.5 transition-colors duration-150 cursor-pointer ${
+                className={`px-3 py-1.5 transition-all duration-150 cursor-pointer ${
                   focusUser === u
                     ? u === 'Hung'
                       ? 'bg-indigo-600 text-white'
                       : u === 'Nga'
                       ? 'bg-emerald-600 text-white'
-                      : 'bg-blue-700 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                      : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                    : 'text-gray-600 hover:bg-white/40'
                 }`}
               >
                 {u}
@@ -437,7 +441,7 @@ export default function Dashboard() {
       {/* Secondary KPI row — energy + consistency */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         {avgEnergy !== null && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 md:p-6">
+          <div className="rounded-2xl glass border border-amber-200/30 bg-amber-50/30 p-4 md:p-6">
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm text-gray-500">{t('dash.avgEnergy')}</span>
               <Zap size={18} className="text-amber-500" />
@@ -472,7 +476,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 md:p-6">
+        <div className="rounded-2xl glass border border-purple-200/30 bg-purple-50/30 p-4 md:p-6">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-gray-500">{t('dash.consistency')}</span>
             <Flame size={18} className="text-purple-500" />
@@ -487,11 +491,11 @@ export default function Dashboard() {
               style={{ width: `${consistencyScore}%` }}
             />
           </div>
-          <p className="text-xs text-gray-400 mt-1">Gym + Water + Sleep ≥ 7</p>
+          <p className="text-xs text-gray-400 mt-1">Gym + Water ≥ {waterTarget}L + Sleep ≥ {sleepTarget}</p>
         </div>
 
         {/* Today's motivational tip */}
-        <div className="rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-6">
+        <div className="rounded-2xl glass border border-blue-200/30 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 p-4 md:p-6">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-gray-500">{t('dash.todayTip')}</span>
             <span className="text-lg">💡</span>
@@ -503,7 +507,7 @@ export default function Dashboard() {
       </div>
 
       {/* Goal Rings — respect focus filter */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+      <div className="rounded-2xl glass p-4 md:p-6">
         <h3 className="text-xl font-semibold text-gray-900 mb-4">{t('dash.goalSection')}</h3>
         <div className="flex items-center justify-center gap-10 flex-wrap">
           {(focusUser === 'Hung' || focusUser === 'Both') && hungGoal && (() => {
@@ -568,7 +572,7 @@ export default function Dashboard() {
 
       {/* Simple view: enhanced weekly summary with progress bars */}
       {!isAdvanced && weeklySummary && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+        <div className="rounded-2xl glass p-4 md:p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">
             {weeklySummary.label === 'this-week' ? t('dash.thisWeek') : t('dash.lastWeek')}
           </h3>
@@ -582,7 +586,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm font-bold text-gray-900">{weeklySummary.gymDays}/7</span>
               </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-white/30 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                   style={{ width: `${(weeklySummary.gymDays / 7) * 100}%` }}
@@ -599,12 +603,12 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm font-bold text-gray-900">{weeklySummary.avgWater}L</span>
               </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-white/30 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
-                    weeklySummary.avgWater >= 2.0 ? 'bg-cyan-500' : 'bg-cyan-300'
+                    weeklySummary.avgWater >= waterTarget ? 'bg-cyan-500' : 'bg-cyan-300'
                   }`}
-                  style={{ width: `${Math.min(100, (weeklySummary.avgWater / 3.0) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (weeklySummary.avgWater / (waterTarget * 1.5)) * 100)}%` }}
                 />
               </div>
             </div>
@@ -618,10 +622,10 @@ export default function Dashboard() {
                 </div>
                 <span className="text-sm font-bold text-gray-900">{weeklySummary.avgSleep}/10</span>
               </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-white/30 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
-                    weeklySummary.avgSleep >= 7 ? 'bg-violet-500' : 'bg-violet-300'
+                    weeklySummary.avgSleep >= sleepTarget ? 'bg-violet-500' : 'bg-violet-300'
                   }`}
                   style={{ width: `${(weeklySummary.avgSleep / 10) * 100}%` }}
                 />
@@ -629,14 +633,14 @@ export default function Dashboard() {
             </div>
 
             {/* Weight Delta + Cheat Meals */}
-            <div className="flex gap-4 pt-2 border-t border-gray-100">
+            <div className="flex gap-4 pt-2 border-t border-white/20">
               <div className="flex-1 text-center">
                 <p className={`text-xl font-bold ${weeklySummary.weightDelta <= 0 ? 'text-green-600' : 'text-red-500'}`}>
                   {weeklySummary.weightDelta > 0 ? '+' : ''}{weeklySummary.weightDelta} kg
                 </p>
                 <p className="text-xs text-gray-400">{t('dash.weeklyChange')}</p>
               </div>
-              <div className="w-px bg-gray-100" />
+              <div className="w-px bg-white/20" />
               <div className="flex-1 text-center">
                 <p className={`text-xl font-bold ${weeklySummary.cheatMeals === 0 ? 'text-green-600' : 'text-amber-500'}`}>
                   {weeklySummary.cheatMeals}
@@ -650,7 +654,7 @@ export default function Dashboard() {
 
       {/* Body Measurements card — shown in simple view when data exists */}
       {!isAdvanced && latestMeasurement && (
-        <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+        <div className="rounded-2xl glass p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <Ruler size={18} className="text-gray-400" />
             <h3 className="text-xl font-semibold text-gray-900">{t('dash.latestMeasure')}</h3>
@@ -660,28 +664,28 @@ export default function Dashboard() {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {latestMeasurement.waist_cm != null && (
-              <div className="bg-purple-50 rounded-xl p-3 text-center">
+              <div className="bg-purple-50/50 rounded-xl p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">{t('dash.waist')}</p>
                 <p className="text-2xl font-bold text-purple-700">{latestMeasurement.waist_cm}</p>
                 <p className="text-xs text-gray-400">cm</p>
               </div>
             )}
             {latestMeasurement.belly_cm != null && (
-              <div className="bg-pink-50 rounded-xl p-3 text-center">
+              <div className="bg-pink-50/50 rounded-xl p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">{t('dash.belly')}</p>
                 <p className="text-2xl font-bold text-pink-700">{latestMeasurement.belly_cm}</p>
                 <p className="text-xs text-gray-400">cm</p>
               </div>
             )}
             {latestMeasurement.hip_cm != null && (
-              <div className="bg-teal-50 rounded-xl p-3 text-center">
+              <div className="bg-teal-50/50 rounded-xl p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">{t('dash.hip')}</p>
                 <p className="text-2xl font-bold text-teal-700">{latestMeasurement.hip_cm}</p>
                 <p className="text-xs text-gray-400">cm</p>
               </div>
             )}
             {latestMeasurement.thigh_cm != null && (
-              <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <div className="bg-slate-50/50 rounded-xl p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">{t('dash.thigh')}</p>
                 <p className="text-2xl font-bold text-slate-700">{latestMeasurement.thigh_cm}</p>
                 <p className="text-xs text-gray-400">cm</p>
@@ -720,7 +724,7 @@ export default function Dashboard() {
 
           {/* Scatter plot: Weight vs Gym Check-in Correlation */}
           {scatterData.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+            <div className="rounded-2xl glass p-4 md:p-6">
               <h3 className="text-xl font-semibold text-gray-900 mb-4">
                 {t('dash.scatter')}
               </h3>
@@ -758,8 +762,10 @@ export default function Dashboard() {
                         }}
                         contentStyle={{
                           fontSize: '13px',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          background: 'rgba(255,255,255,0.85)',
+                          backdropFilter: 'blur(12px)',
                         }}
                       />
                       <Scatter
@@ -776,7 +782,7 @@ export default function Dashboard() {
 
           {/* Energy Level Trend Chart */}
           {energyChartData.length >= 3 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+            <div className="rounded-2xl glass p-4 md:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Zap size={20} className="text-amber-500" />
                 <h3 className="text-xl font-semibold text-gray-900">{t('dash.energyChart')}</h3>
@@ -800,8 +806,10 @@ export default function Dashboard() {
                       <Tooltip
                         contentStyle={{
                           fontSize: '13px',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          background: 'rgba(255,255,255,0.85)',
+                          backdropFilter: 'blur(12px)',
                         }}
                       />
                       <Line
@@ -842,7 +850,7 @@ export default function Dashboard() {
 
           {/* Body Measurements Trend Chart */}
           {bodyChartData.length >= 2 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+            <div className="rounded-2xl glass p-4 md:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Ruler size={20} className="text-gray-400" />
                 <h3 className="text-xl font-semibold text-gray-900">{t('dash.bodyChart')}</h3>
@@ -866,8 +874,10 @@ export default function Dashboard() {
                       <Tooltip
                         contentStyle={{
                           fontSize: '13px',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          background: 'rgba(255,255,255,0.85)',
+                          backdropFilter: 'blur(12px)',
                         }}
                         formatter={(value: number) => [`${value} cm`]}
                       />
@@ -889,7 +899,7 @@ export default function Dashboard() {
           )}
 
           {/* Projected ETA card (detailed) */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+          <div className="rounded-2xl glass p-4 md:p-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-3">
               <Calendar size={20} className="inline mr-2 text-gray-400" />
               {t('dash.etaTitle')}
@@ -924,7 +934,7 @@ export default function Dashboard() {
                     kg
                   </span>
                 </div>
-                <hr className="border-gray-100" />
+                <hr className="border-white/20" />
                 <div className="flex justify-between">
                   <span className="text-gray-500">{t('dash.projectedDateLabel')}</span>
                   <span className="font-semibold text-blue-700">

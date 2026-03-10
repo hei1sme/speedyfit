@@ -19,6 +19,7 @@ export default function Log() {
   const { goals } = useGoals();
   const [modalOpen, setModalOpen] = useState(false);
   const [detailLog, setDetailLog] = useState<DailyLog | null>(null);
+  const [editInitial, setEditInitial] = useState<{ date: string; user: UserName } | null>(null);
 
   // Derive users from goals — always has both users regardless of log history
   const users: AppUser[] = useMemo(() => {
@@ -59,11 +60,11 @@ export default function Log() {
   if (error) {
     return (
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <div className="glass rounded-2xl border border-red-200/50 p-6 text-center">
           <p className="text-red-600 font-medium">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
+            className="mt-3 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors cursor-pointer"
           >
             {t('log.retry')}
           </button>
@@ -79,7 +80,7 @@ export default function Log() {
         <h1 className="text-2xl font-bold text-gray-900">{t('log.title')}</h1>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-blue-800 transition-colors duration-200 cursor-pointer min-h-12"
+          className="flex items-center gap-2 glass-btn-primary px-4 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer min-h-12"
         >
           <Plus size={18} />
           {t('log.newLog')}
@@ -88,13 +89,13 @@ export default function Log() {
 
       {/* Empty state */}
       {sortedLogs.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+        <div className="rounded-2xl glass p-12 text-center">
           <Scale size={40} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500 font-medium mb-1">{t('log.emptyTitle')}</p>
           <p className="text-sm text-gray-400 mb-4">{t('log.emptyDesc')}</p>
           <button
             onClick={() => setModalOpen(true)}
-            className="bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors cursor-pointer"
+            className="glass-btn-primary px-5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer"
           >
             {t('log.emptyBtn')}
           </button>
@@ -106,7 +107,7 @@ export default function Log() {
             <button
               key={log.id}
               onClick={() => setDetailLog(log)}
-              className="w-full bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-sm transition-all duration-150 cursor-pointer text-left"
+              className="w-full rounded-2xl glass glass-hover p-4 transition-all duration-150 cursor-pointer text-left"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-gray-900">
@@ -146,15 +147,15 @@ export default function Log() {
                 </span>
                 <span
                   className={`flex items-center gap-1 ${
-                    log.water_liters >= 2.0 ? 'text-blue-600' : 'text-gray-400'
+                    (log.water_liters ?? 0) >= 2.0 ? 'text-blue-600' : 'text-gray-400'
                   }`}
                 >
                   <Droplets size={13} />
-                  {log.water_liters.toFixed(1)}L
+                  {log.water_liters != null ? `${log.water_liters.toFixed(1)}L` : '—'}
                 </span>
                 <span className="flex items-center gap-1">
                   <Moon size={13} />
-                  {t('log.sleep')} {log.sleep_score}/10
+                  {t('log.sleep')} {log.sleep_score != null ? `${log.sleep_score}/10` : '—'}
                 </span>
                 {log.energy_level != null && (
                   <span className={`flex items-center gap-1 ${
@@ -184,13 +185,25 @@ export default function Log() {
       {/* Log Modal */}
       <LogModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setEditInitial(null); }}
         onSaved={refetch}
         users={users}
+        initialDate={editInitial?.date}
+        initialUser={editInitial?.user}
       />
 
       {/* Day Detail Sheet */}
-      <DayDetailSheet log={detailLog} onClose={() => setDetailLog(null)} onDelete={handleDelete} />
+      <DayDetailSheet
+        log={detailLog}
+        onClose={() => setDetailLog(null)}
+        onEdit={() => {
+          if (!detailLog) return;
+          setEditInitial({ date: detailLog.date, user: detailLog.user_name });
+          setDetailLog(null);
+          setModalOpen(true);
+        }}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }

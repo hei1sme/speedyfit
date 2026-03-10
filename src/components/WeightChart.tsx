@@ -94,7 +94,7 @@ function CustomTooltip({
   const point = payload[0]?.payload as ChartPoint | undefined;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm max-w-xs">
+    <div className="glass-strong rounded-xl p-3 text-sm max-w-xs">
       <p className="font-semibold text-gray-900 mb-1.5">{dateLabel}</p>
       {payload.map((entry: any, idx: number) => (
         <div key={idx} className="flex items-center gap-2">
@@ -143,11 +143,11 @@ export default function WeightChart({
 
   if (sortedDates.length === 0) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
+      <div className="rounded-2xl glass p-8 text-center">
         <p className="text-gray-500 mb-3">No weight data yet.</p>
         <a
           href="/log"
-          className="inline-block bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors duration-200 cursor-pointer"
+          className="inline-block glass-btn-primary px-4 py-2 rounded-xl text-sm font-medium cursor-pointer"
         >
           Log your first weigh-in
         </a>
@@ -188,7 +188,7 @@ export default function WeightChart({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+    <div className="rounded-2xl glass p-4 md:p-6">
       <h3 className="text-xl font-semibold text-gray-900 mb-4">Weight Trend</h3>
       <div className="w-full overflow-x-auto">
         <div className="min-w-[500px]">

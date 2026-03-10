@@ -20,7 +20,7 @@ export default function Login() {
   // Already logged in — redirect
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-pulse text-gray-400 text-lg">Loading…</div>
       </div>
     );
@@ -69,11 +69,11 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
-      <div className="bg-white rounded-xl shadow-md w-full max-w-sm p-8">
+    <div className="flex items-center justify-center min-h-screen px-4">
+      <div className="glass-strong rounded-2xl shadow-xl w-full max-w-sm p-8">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-blue-700 text-white p-3 rounded-xl mb-3">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-3 rounded-xl mb-3">
             <Dumbbell size={28} />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">SpeedyFit</h1>
@@ -96,8 +96,8 @@ export default function Login() {
                 setEmail(e.target.value);
                 setFieldErrors((prev) => ({ ...prev, email: false }));
               }}
-              className={`w-full min-h-12 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                fieldErrors.email ? 'border-red-400' : 'border-gray-300'
+              className={`w-full min-h-12 px-3 py-2 rounded-xl text-sm glass-input focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+                fieldErrors.email ? 'border-red-400' : ''
               }`}
             />
           </div>
@@ -117,8 +117,8 @@ export default function Login() {
                   setPassword(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, password: false }));
                 }}
-                className={`w-full min-h-12 px-3 py-2 pr-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  fieldErrors.password ? 'border-red-400' : 'border-gray-300'
+                className={`w-full min-h-12 px-3 py-2 pr-10 rounded-xl text-sm glass-input focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+                  fieldErrors.password ? 'border-red-400' : ''
                 }`}
               />
               <button
@@ -136,7 +136,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full min-h-12 bg-blue-700 text-white rounded-lg font-medium hover:bg-blue-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full min-h-12 glass-btn-primary rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? t('login.signingIn') : t('login.signIn')}
           </button>

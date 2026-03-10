@@ -39,11 +39,11 @@ function computeWeekSummary(logs: DailyLog[], weekStart: Date, weekEnd: Date, la
 
   const gymDays = weekLogs.filter((l) => l.gym_checkin).length;
   const avgWater = parseFloat(
-    (weekLogs.reduce((s, l) => s + l.water_liters, 0) / weekLogs.length).toFixed(1)
+    (weekLogs.reduce((s, l) => s + (l.water_liters ?? 0), 0) / weekLogs.length).toFixed(1)
   );
   const cheatMeals = weekLogs.filter((l) => l.cheat_meal).length;
   const avgSleep = parseFloat(
-    (weekLogs.reduce((s, l) => s + l.sleep_score, 0) / weekLogs.length).toFixed(1)
+    (weekLogs.reduce((s, l) => s + (l.sleep_score ?? 0), 0) / weekLogs.length).toFixed(1)
   );
   const weightDelta = parseFloat(
     (sorted[sorted.length - 1].weight_kg - sorted[0].weight_kg).toFixed(1)
@@ -67,7 +67,7 @@ export default function WeeklySummaryBar({ logs, weeksToShow = 4 }: WeeklySummar
 
   if (weeks.length === 0) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+      <div className="rounded-2xl glass p-4 md:p-6">
         <h3 className="text-xl font-semibold text-gray-900 mb-4">Weekly Summary</h3>
         <p className="text-gray-500 text-sm">No data available for recent weeks.</p>
       </div>
@@ -75,7 +75,7 @@ export default function WeeklySummaryBar({ logs, weeksToShow = 4 }: WeeklySummar
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+    <div className="rounded-2xl glass p-4 md:p-6">
       <h3 className="text-xl font-semibold text-gray-900 mb-4">Weekly Summary</h3>
       <div className="w-full overflow-x-auto">
         <div className="min-w-[400px]">
@@ -95,8 +95,10 @@ export default function WeeklySummaryBar({ logs, weeksToShow = 4 }: WeeklySummar
               <Tooltip
                 contentStyle={{
                   fontSize: '13px',
-                  borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  background: 'rgba(255,255,255,0.85)',
+                  backdropFilter: 'blur(12px)',
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />

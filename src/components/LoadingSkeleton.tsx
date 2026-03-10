@@ -11,7 +11,7 @@ function SkeletonBlock({ className }: { className?: string }) {
 
 function KPISkeleton() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
+    <div className="rounded-2xl glass p-4 md:p-6">
       <div className="space-y-3">
         <SkeletonBlock className="h-3 w-20" />
         <SkeletonBlock className="h-8 w-24" />
@@ -23,10 +23,10 @@ function KPISkeleton() {
 
 function ChartSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
+    <div className="rounded-2xl glass p-4 md:p-6">
       <SkeletonBlock className="h-5 w-32 mb-4" />
       <div className="space-y-2">
-        <SkeletonBlock className="h-64 w-full" />
+        <SkeletonBlock className="h-64 w-full rounded-xl" />
       </div>
     </div>
   );
@@ -34,7 +34,7 @@ function ChartSkeleton() {
 
 function CardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
+    <div className="rounded-2xl glass p-4 md:p-6">
       <SkeletonBlock className="h-5 w-32 mb-4" />
       <div className="space-y-3">
         <SkeletonBlock className="h-4 w-full" />
@@ -47,11 +47,11 @@ function CardSkeleton() {
 
 function HeatmapSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
+    <div className="rounded-2xl glass p-4 md:p-6">
       <SkeletonBlock className="h-5 w-32 mb-4" />
       <div className="grid grid-cols-7 gap-1.5">
         {Array.from({ length: 35 }).map((_, i) => (
-          <SkeletonBlock key={i} className="aspect-square" />
+          <SkeletonBlock key={i} className="aspect-square rounded-lg" />
         ))}
       </div>
     </div>

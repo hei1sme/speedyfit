@@ -28,7 +28,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon: React.E
   return (
     <div className="mb-8">
       <div className="flex items-center gap-2 mb-3">
-        <Icon size={20} className="text-blue-600 shrink-0" />
+        <Icon size={20} className="text-indigo-600 shrink-0" />
         <h2 className="text-xl font-bold text-gray-900">{title}</h2>
       </div>
       {children}
@@ -59,7 +59,7 @@ function BulletList({ items }: { items: string[] }) {
 
 function InfoCard({ className = '', children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}>
+    <div className={`rounded-2xl glass p-4 ${className}`}>
       {children}
     </div>
   );
@@ -443,20 +443,20 @@ export default function Guides() {
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <BookOpen size={24} className="text-blue-700" />
+        <BookOpen size={24} className="text-indigo-600" />
         <h1 className="text-2xl font-bold text-gray-900">{t('guides.title')}</h1>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-6 overflow-x-auto">
+      <div className="flex gap-1 p-1 glass rounded-xl mb-6 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-200 cursor-pointer whitespace-nowrap ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer whitespace-nowrap ${
               activeTab === tab.id
-                ? 'bg-white text-blue-700 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'bg-white/80 text-indigo-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-white/30'
             }`}
           >
             <tab.icon size={16} />

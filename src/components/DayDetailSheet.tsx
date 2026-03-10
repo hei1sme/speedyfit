@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { X, Dumbbell, Droplets, Moon, UtensilsCrossed, StickyNote, Scale, Trash2, Zap, Ruler } from 'lucide-react';
+import { X, Dumbbell, Droplets, Moon, UtensilsCrossed, StickyNote, Scale, Trash2, Zap, Ruler, Pencil } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 import type { DailyLog } from '../types/database';
@@ -9,6 +9,7 @@ import { useLang } from '../contexts/LangContext';
 export interface DayDetailSheetProps {
   log: DailyLog | null;   // null = closed
   onClose: () => void;
+  onEdit?: () => void;
   onDelete?: (id: string) => Promise<void>;
 }
 
@@ -24,7 +25,7 @@ function DetailRow({
   color?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-b-0">
+    <div className="flex items-center gap-3 py-3 border-b border-white/20 last:border-b-0">
       <Icon size={18} className="text-gray-400 shrink-0" />
       <span className="text-sm text-gray-500 w-28 shrink-0">{label}</span>
       <span className={`text-sm font-medium ${color}`}>{value}</span>
@@ -32,7 +33,7 @@ function DetailRow({
   );
 }
 
-export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailSheetProps) {
+export default function DayDetailSheet({ log, onClose, onEdit, onDelete }: DayDetailSheetProps) {
   const { t } = useLang();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -66,16 +67,16 @@ export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailShee
       />
 
       {/* Sheet panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl z-50 flex flex-col animate-slide-in">
+      <div className="fixed right-0 top-0 h-full w-full max-w-sm glass-strong shadow-xl z-50 flex flex-col animate-slide-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/20">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">{log.user_name}</h3>
             <p className="text-sm text-gray-500">{dateLabel}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors duration-150 cursor-pointer"
+            className="p-2 rounded-xl hover:bg-white/30 text-gray-500 transition-colors duration-150 cursor-pointer"
             aria-label="Close detail"
           >
             <X size={20} />
@@ -98,8 +99,8 @@ export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailShee
           <DetailRow
             icon={Droplets}
             label={t('detail.water')}
-            value={`${log.water_liters.toFixed(1)} L`}
-            color={log.water_liters >= 2.0 ? 'text-green-600' : 'text-gray-900'}
+            value={log.water_liters != null ? `${log.water_liters.toFixed(1)} L` : '—'}
+            color={log.water_liters != null && log.water_liters >= 2.0 ? 'text-green-600' : 'text-gray-900'}
           />
           <DetailRow
             icon={UtensilsCrossed}
@@ -110,13 +111,15 @@ export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailShee
           <DetailRow
             icon={Moon}
             label={t('detail.sleep')}
-            value={`${log.sleep_score} / 10`}
+            value={log.sleep_score != null ? `${log.sleep_score} / 10` : '—'}
             color={
-              log.sleep_score >= 7
-                ? 'text-green-600'
-                : log.sleep_score >= 5
-                  ? 'text-yellow-600'
-                  : 'text-red-600'
+              log.sleep_score == null
+                ? 'text-gray-400'
+                : log.sleep_score >= 7
+                  ? 'text-green-600'
+                  : log.sleep_score >= 5
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
             }
           />
           {log.energy_level != null && (
@@ -143,25 +146,25 @@ export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailShee
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {log.waist_cm != null && (
-                  <div className="bg-purple-50 rounded-lg p-2 text-center">
+                  <div className="bg-purple-50/50 rounded-xl p-2 text-center">
                     <p className="text-xs text-gray-500">{t('detail.waist')}</p>
                     <p className="text-sm font-semibold text-purple-700">{log.waist_cm} cm</p>
                   </div>
                 )}
                 {log.belly_cm != null && (
-                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                  <div className="bg-gray-50/50 rounded-xl p-2 text-center">
                     <p className="text-xs text-gray-500">{t('detail.belly')}</p>
                     <p className="text-sm font-semibold text-gray-800">{log.belly_cm} cm</p>
                   </div>
                 )}
                 {log.hip_cm != null && (
-                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                  <div className="bg-gray-50/50 rounded-xl p-2 text-center">
                     <p className="text-xs text-gray-500">{t('detail.hip')}</p>
                     <p className="text-sm font-semibold text-gray-800">{log.hip_cm} cm</p>
                   </div>
                 )}
                 {log.thigh_cm != null && (
-                  <div className="bg-gray-50 rounded-lg p-2 text-center">
+                  <div className="bg-gray-50/50 rounded-xl p-2 text-center">
                     <p className="text-xs text-gray-500">{t('detail.thigh')}</p>
                     <p className="text-sm font-semibold text-gray-800">{log.thigh_cm} cm</p>
                   </div>
@@ -171,7 +174,7 @@ export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailShee
           )}
 
           {log.notes && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <div className="mt-4 p-3 glass-subtle rounded-xl">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <StickyNote size={14} className="text-gray-400" />
                 <span className="text-xs text-gray-500 font-medium">{t('detail.notes')}</span>
@@ -181,28 +184,41 @@ export default function DayDetailSheet({ log, onClose, onDelete }: DayDetailShee
           )}
         </div>
 
-        {/* Footer with delete */}
-        {onDelete && (
-          <div className="px-5 py-4 border-t border-gray-100">
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className={`w-full min-h-10 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer flex items-center justify-center gap-2 ${
-                confirmDelete
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-white border border-red-300 text-red-600 hover:bg-red-50'
-              } disabled:opacity-50`}
-            >
-              <Trash2 size={15} />
-              {deleting ? t('detail.deleting') : confirmDelete ? t('detail.deleteConfirm') : t('detail.delete')}
-            </button>
-            {confirmDelete && (
+        {/* Footer */}
+        {(onEdit || onDelete) && (
+          <div className="px-5 py-4 border-t border-white/20 space-y-2">
+            {onEdit && (
               <button
-                onClick={() => setConfirmDelete(false)}
-                className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                onClick={onEdit}
+                className="w-full min-h-10 rounded-xl text-sm font-medium border border-indigo-300/50 text-indigo-600 glass hover:bg-indigo-50/50 transition-colors duration-150 cursor-pointer flex items-center justify-center gap-2"
               >
-                {t('detail.cancel')}
+                <Pencil size={15} />
+                {t('detail.edit')}
               </button>
+            )}
+            {onDelete && (
+              <>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className={`w-full min-h-10 rounded-xl text-sm font-medium transition-colors duration-150 cursor-pointer flex items-center justify-center gap-2 ${
+                    confirmDelete
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'glass border border-red-300/50 text-red-600 hover:bg-red-50/50'
+                  } disabled:opacity-50`}
+                >
+                  <Trash2 size={15} />
+                  {deleting ? t('detail.deleting') : confirmDelete ? t('detail.deleteConfirm') : t('detail.delete')}
+                </button>
+                {confirmDelete && (
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {t('detail.cancel')}
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

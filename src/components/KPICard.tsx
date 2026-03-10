@@ -13,10 +13,17 @@ export interface KPICardProps {
 }
 
 const variantStyles: Record<string, string> = {
-  default: 'bg-white border-gray-200',
-  success: 'bg-green-50 border-green-200',
-  warning: 'bg-amber-50 border-amber-200',
-  danger: 'bg-red-50 border-red-200',
+  default: 'glass',
+  success: 'glass border-green-200/40',
+  warning: 'glass border-amber-200/40',
+  danger: 'glass border-red-200/40',
+};
+
+const variantTint: Record<string, string> = {
+  default: '',
+  success: 'bg-green-50/30',
+  warning: 'bg-amber-50/30',
+  danger: 'bg-red-50/30',
 };
 
 export default function KPICard({
@@ -30,10 +37,10 @@ export default function KPICard({
 }: KPICardProps) {
   if (loading) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
+      <div className="rounded-2xl glass p-4 md:p-6">
         <div className="animate-pulse space-y-3">
-          <div className="h-3 w-20 bg-gray-200 rounded" />
-          <div className="h-8 w-24 bg-gray-200 rounded" />
+          <div className="h-3 w-20 bg-gray-200/60 rounded" />
+          <div className="h-8 w-24 bg-gray-200/60 rounded" />
         </div>
       </div>
     );
@@ -41,7 +48,7 @@ export default function KPICard({
 
   return (
     <div
-      className={`rounded-lg border p-4 md:p-6 ${variantStyles[variant]}`}
+      className={`rounded-2xl p-4 md:p-6 glass-hover ${variantStyles[variant]} ${variantTint[variant]}`}
     >
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm text-gray-500">{label}</span>

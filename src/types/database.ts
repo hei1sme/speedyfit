@@ -8,9 +8,9 @@ export interface DailyLog {
   user_name: 'Hung' | 'Nga';
   weight_kg: number;
   gym_checkin: boolean;
-  water_liters: number;
+  water_liters: number | null;  // nullable for morning-first flow
   cheat_meal: boolean;
-  sleep_score: number;    // 1–10
+  sleep_score: number | null;   // 1–10, nullable for morning-first flow
   energy_level: number | null;  // 1–10, optional
   waist_cm: number | null;      // optional bi-weekly
   belly_cm: number | null;      // optional bi-weekly
@@ -27,6 +27,9 @@ export interface UserGoal {
   target_weight_kg: number;
   start_date: string;
   goal_type: 'cut' | 'maintain' | 'bulk';
+  water_target_l: number;      // default 2.0
+  sleep_target: number;        // default 7
+  gym_target_week: number;     // default 5
 }
 
 export type UserName = 'Hung' | 'Nga';

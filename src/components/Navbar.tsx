@@ -1,7 +1,7 @@
 // src/components/Navbar.tsx
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PenSquare, BookOpen, LogOut, Menu, X, Dumbbell, HeartPulse } from 'lucide-react';
+import { LayoutDashboard, PenSquare, BookOpen, LogOut, Menu, X, Dumbbell, HeartPulse, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { supabase } from '../lib/supabaseClient';
@@ -17,6 +17,7 @@ export default function Navbar() {
     { to: '/log', label: t('nav.log'), icon: PenSquare },
     { to: '/rulebook', label: t('nav.rulebook'), icon: BookOpen },
     { to: '/guides', label: t('nav.guides'), icon: HeartPulse },
+    { to: '/settings', label: t('nav.settings'), icon: Settings },
   ];
 
   const handleLogout = async () => {
@@ -31,13 +32,15 @@ export default function Navbar() {
   };
 
   const LangToggle = () => (
-    <div className="flex rounded-md border border-gray-200 overflow-hidden text-xs font-semibold">
+    <div className="flex rounded-xl overflow-hidden text-xs font-semibold" style={{ border: '1px solid rgba(0,0,0,0.08)' }}>
       {(['en', 'vi'] as const).map((l) => (
         <button
           key={l}
           onClick={() => setLang(l)}
-          className={`px-2.5 py-1 cursor-pointer transition-colors duration-150 ${
-            lang === l ? 'bg-blue-700 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+          className={`px-2.5 py-1 cursor-pointer transition-all duration-200 ${
+            lang === l
+              ? 'bg-indigo-500/90 text-white'
+              : 'bg-white/40 text-gray-500 hover:bg-white/60'
           }`}
         >
           {l.toUpperCase()}
@@ -47,16 +50,18 @@ export default function Navbar() {
   );
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <nav className="glass-strong sticky top-0 z-50" style={{ borderBottom: '1px solid rgba(255,255,255,0.5)' }}>
       <div className="max-w-5xl mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <NavLink
             to="/dashboard"
-            className="flex items-center gap-2 text-blue-700 font-bold text-lg"
+            className="flex items-center gap-2 font-extrabold text-lg"
           >
-            <Dumbbell size={22} />
-            <span>SpeedyFit</span>
+            <div className="p-1.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+              <Dumbbell size={18} />
+            </div>
+            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">SpeedyFit</span>
           </NavLink>
 
           {/* Desktop nav */}
@@ -66,10 +71,10 @@ export default function Navbar() {
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                  `flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-indigo-500/10 text-indigo-600 shadow-sm'
+                      : 'text-gray-500 hover:bg-white/50 hover:text-gray-800'
                   }`
                 }
               >
@@ -80,7 +85,7 @@ export default function Navbar() {
             <LangToggle />
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 cursor-pointer ml-1"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-white/50 hover:text-gray-800 transition-all duration-200 cursor-pointer ml-1"
             >
               <LogOut size={16} />
               {t('nav.logout')}
@@ -92,7 +97,7 @@ export default function Navbar() {
             <LangToggle />
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 cursor-pointer"
+              className="p-2 rounded-xl text-gray-500 hover:bg-white/50 cursor-pointer transition-all duration-200"
               aria-label="Toggle menu"
             >
               {mobileOpen ? <X size={22} /> : <Menu size={22} />}
@@ -103,7 +108,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
+        <div className="md:hidden glass-strong" style={{ borderTop: '1px solid rgba(255,255,255,0.4)' }}>
           <div className="px-4 py-2 space-y-1">
             {navLinks.map((link) => (
               <NavLink
@@ -111,10 +116,10 @@ export default function Navbar() {
                 to={link.to}
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                  `flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-indigo-500/10 text-indigo-600'
+                      : 'text-gray-500 hover:bg-white/50'
                   }`
                 }
               >
@@ -124,7 +129,7 @@ export default function Navbar() {
             ))}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors duration-200 cursor-pointer w-full"
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-white/50 transition-all duration-200 cursor-pointer w-full"
             >
               <LogOut size={18} />
               {t('nav.logout')}

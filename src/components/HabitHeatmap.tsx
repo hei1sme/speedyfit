@@ -27,7 +27,7 @@ export default function HabitHeatmap({ logs, days = 30 }: HabitHeatmapProps) {
   const logByDate = new Map(logs.map((l) => [l.date, l]));
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 md:p-6">
+    <div className="rounded-2xl glass p-4 md:p-6">
       <h3 className="text-xl font-semibold text-gray-900 mb-4">Habit Heatmap</h3>
 
       {/* Legend */}
@@ -99,10 +99,10 @@ export default function HabitHeatmap({ logs, days = 30 }: HabitHeatmapProps) {
           return (
             <div
               key={dateStr}
-              className={`aspect-square rounded-md ${sleepColor(log.sleep_score)} flex items-center justify-center relative cursor-pointer transition-transform duration-150 hover:scale-110 ${
+              className={`aspect-square rounded-md ${sleepColor(log.sleep_score ?? 0)} flex items-center justify-center relative cursor-pointer transition-transform duration-150 hover:scale-110 ${
                 isToday ? 'ring-2 ring-blue-400' : ''
               }`}
-              title={`${format(parseISO(dateStr), 'MMM d')} — Sleep: ${log.sleep_score}/10${log.gym_checkin ? ' | Gym ✓' : ''}${log.water_liters >= 2.0 ? ' | Water ✓' : ''}`}
+              title={`${format(parseISO(dateStr), 'MMM d')} — Sleep: ${log.sleep_score != null ? `${log.sleep_score}/10` : '—'}${log.gym_checkin ? ' | Gym ✓' : ''}${(log.water_liters ?? 0) >= 2.0 ? ' | Water ✓' : ''}`}
             >
               {log.gym_checkin && (
                 <Dumbbell size={14} className="text-blue-700" />

@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Log from './pages/Log';
 import Rulebook from './pages/Rulebook';
 import Guides from './pages/Guides';
+import Settings from './pages/Settings';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
 import { LangProvider } from './contexts/LangContext';
@@ -67,6 +68,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Guides />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />

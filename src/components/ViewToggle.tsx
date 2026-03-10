@@ -8,12 +8,12 @@ export interface ViewToggleProps {
 
 export default function ViewToggle({ value, onChange }: ViewToggleProps) {
   return (
-    <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+    <div className="inline-flex rounded-xl glass p-0.5">
       <button
         onClick={() => onChange('simple')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-200 cursor-pointer ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
           value === 'simple'
-            ? 'bg-white text-blue-700 shadow-sm'
+            ? 'bg-white/80 text-indigo-600 shadow-sm'
             : 'text-gray-500 hover:text-gray-700'
         }`}
       >
@@ -22,9 +22,9 @@ export default function ViewToggle({ value, onChange }: ViewToggleProps) {
       </button>
       <button
         onClick={() => onChange('advanced')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-200 cursor-pointer ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
           value === 'advanced'
-            ? 'bg-white text-blue-700 shadow-sm'
+            ? 'bg-white/80 text-indigo-600 shadow-sm'
             : 'text-gray-500 hover:text-gray-700'
         }`}
       >
