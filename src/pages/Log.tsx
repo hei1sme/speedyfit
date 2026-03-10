@@ -5,6 +5,7 @@ import { Plus, Scale, Dumbbell, Droplets, Moon, UtensilsCrossed, Zap } from 'luc
 
 import { useWeightData } from '../hooks/useWeightData';
 import { useGoals } from '../hooks/useGoals';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabaseClient';
 import LogModal from '../components/LogModal';
 import type { AppUser } from '../components/LogModal';
@@ -17,9 +18,13 @@ export default function Log() {
   const { t } = useLang();
   const { logs, loading, error, refetch } = useWeightData();
   const { goals } = useGoals();
+  const { session } = useAuth();
+  const myName = (session?.user.user_metadata?.user_name as UserName) ?? 'Hung';
+
   const [modalOpen, setModalOpen] = useState(false);
   const [detailLog, setDetailLog] = useState<DailyLog | null>(null);
   const [editInitial, setEditInitial] = useState<{ date: string; user: UserName } | null>(null);
+  const [filterUser, setFilterUser] = useState<UserName | 'Both'>(myName);
 
   // Derive users from goals — always has both users regardless of log history
   const users: AppUser[] = useMemo(() => {
@@ -39,10 +44,13 @@ export default function Log() {
     refetch();
   };
 
-  // Display logs in reverse chronological order
+  // Display logs in reverse chronological order, filtered by selected user
   const sortedLogs = useMemo(
-    () => [...logs].sort((a, b) => b.date.localeCompare(a.date)),
-    [logs]
+    () =>
+      [...logs]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .filter((l) => filterUser === 'Both' || l.user_name === filterUser),
+    [logs, filterUser]
   );
 
   if (loading) {
@@ -76,7 +84,7 @@ export default function Log() {
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-900">{t('log.title')}</h1>
         <button
           onClick={() => setModalOpen(true)}
@@ -85,6 +93,27 @@ export default function Log() {
           <Plus size={18} />
           {t('log.newLog')}
         </button>
+      </div>
+
+      {/* User filter */}
+      <div className="flex items-center gap-1.5 mb-6 p-1 glass rounded-2xl w-fit">
+        {(['Hung', 'Nga', 'Both'] as const).map((opt) => (
+          <button
+            key={opt}
+            onClick={() => setFilterUser(opt)}
+            className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
+              filterUser === opt
+                ? opt === 'Hung'
+                  ? 'bg-indigo-500/20 text-indigo-700 shadow-sm'
+                  : opt === 'Nga'
+                  ? 'bg-emerald-500/20 text-emerald-700 shadow-sm'
+                  : 'bg-white/60 text-gray-800 shadow-sm'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-white/40'
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
       </div>
 
       {/* Empty state */}
@@ -189,7 +218,7 @@ export default function Log() {
         onSaved={refetch}
         users={users}
         initialDate={editInitial?.date}
-        initialUser={editInitial?.user}
+        initialUser={editInitial?.user ?? myName}
       />
 
       {/* Day Detail Sheet */}

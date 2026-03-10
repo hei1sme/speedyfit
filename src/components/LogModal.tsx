@@ -487,6 +487,17 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
                     onChange={(e) => updateField('gym_checkin', e.target.checked)}
                     className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-400 cursor-pointer"
                   />
+                  <span className="text-sm font-medium text-gray-700">{t('modal.gym')}</span>
+                </label>
+
+                {/* Cheat Meal */}
+                <label className="flex items-center gap-3 min-h-10 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.cheat_meal}
+                    onChange={(e) => updateField('cheat_meal', e.target.checked)}
+                    className="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
+                  />
                   <span className="text-sm font-medium text-gray-700">{t('modal.cheat')}</span>
                 </label>
               </div>

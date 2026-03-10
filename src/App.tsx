@@ -10,6 +10,7 @@ import Guides from './pages/Guides';
 import Settings from './pages/Settings';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
+import QuickLogFAB from './components/QuickLogFAB';
 import { LangProvider } from './contexts/LangContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ export default function App() {
     <LangProvider>
       <ErrorBoundary>
       {session && !loading && <Navbar />}
+      {session && !loading && <QuickLogFAB />}
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
