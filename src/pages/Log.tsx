@@ -19,7 +19,14 @@ export default function Log() {
   const { logs, loading, error, refetch } = useWeightData();
   const { goals } = useGoals();
   const { session } = useAuth();
-  const myName = (session?.user.user_metadata?.user_name as UserName) ?? 'Hung';
+  const UID_TO_NAME: Record<string, UserName> = {
+    'a1337686-b292-4cc9-b31e-4204cb0ebd5e': 'Hung',
+    '0e3139b3-1f77-4c77-8cb1-86396d2450f5': 'Nga',
+  };
+  const myName =
+    (session?.user.user_metadata?.user_name as UserName) ??
+    UID_TO_NAME[session?.user.id ?? ''] ??
+    'Hung' as UserName;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [detailLog, setDetailLog] = useState<DailyLog | null>(null);

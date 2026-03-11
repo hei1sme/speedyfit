@@ -18,11 +18,19 @@ interface GoalForm {
   gym_target_week: string;
 }
 
+const UID_TO_NAME: Record<string, UserName> = {
+  'a1337686-b292-4cc9-b31e-4204cb0ebd5e': 'Hung',
+  '0e3139b3-1f77-4c77-8cb1-86396d2450f5': 'Nga',
+};
+
 export default function Settings() {
   const { session } = useAuth();
   const { t } = useLang();
   const { goals, loading, updateGoal } = useGoals();
-  const myName: UserName = (session?.user.user_metadata?.user_name as UserName) ?? 'Hung';
+  const myName: UserName =
+    (session?.user.user_metadata?.user_name as UserName) ??
+    UID_TO_NAME[session?.user.id ?? ''] ??
+    'Hung';
 
   const myGoal = goals.find((g) => g.user_name === myName);
 

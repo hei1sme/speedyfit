@@ -132,8 +132,15 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
   const [measureOpen, setMeasureOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Default to logged-in user
-  const myName = (session?.user.user_metadata?.user_name as UserName) ?? 'Hung';
+  // Default to logged-in user — metadata first, UID fallback
+  const UID_TO_NAME: Record<string, UserName> = {
+    'a1337686-b292-4cc9-b31e-4204cb0ebd5e': 'Hung',
+    '0e3139b3-1f77-4c77-8cb1-86396d2450f5': 'Nga',
+  };
+  const myName =
+    (session?.user.user_metadata?.user_name as UserName) ??
+    UID_TO_NAME[session?.user.id ?? ''] ??
+    'Hung' as UserName;
   const [logFor, setLogFor] = useState<UserName>(myName);
 
   // Fetch existing log for the selected date+user to pre-populate

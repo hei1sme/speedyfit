@@ -163,8 +163,15 @@ export default function Dashboard() {
   const { logs: allLogs, loading: logsLoading, error: logsError } = useWeightData();
   const { goals, loading: goalLoading } = useGoals();
 
-  // Current user's name
-  const myName: UserName = (session?.user.user_metadata?.user_name as UserName) ?? 'Hung';
+  // Current user's name — metadata first, UID fallback, last resort 'Hung'
+  const UID_TO_NAME: Record<string, UserName> = {
+    'a1337686-b292-4cc9-b31e-4204cb0ebd5e': 'Hung',
+    '0e3139b3-1f77-4c77-8cb1-86396d2450f5': 'Nga',
+  };
+  const myName: UserName =
+    (session?.user.user_metadata?.user_name as UserName) ??
+    UID_TO_NAME[session?.user.id ?? ''] ??
+    'Hung';
 
   // User focus filter — defaults to logged-in user
   const [focusUser, setFocusUser] = useState<'Hung' | 'Nga' | 'Both'>(myName);
