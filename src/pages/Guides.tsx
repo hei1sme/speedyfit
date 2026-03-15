@@ -4,6 +4,8 @@ import {
   ChefHat,
   Dumbbell,
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
   ShoppingCart,
   Hand,
   Apple,
@@ -64,6 +66,9 @@ function InfoCard({ className = '', children }: { className?: string; children: 
     </div>
   );
 }
+
+const LATEST_TRAINING_WEEK = 2;
+type TrainingWeek = 1 | 2;
 
 /* ═══════════════ TAB 1: NUTRITION ═══════════════ */
 function NutritionGuide() {
@@ -217,7 +222,7 @@ function NutritionGuide() {
 }
 
 /* ═══════════════ TAB 2: TRAINING ═══════════════ */
-function TrainingGuide() {
+function TrainingGuideWeek1() {
   return (
     <div>
       {/* Overview */}
@@ -340,6 +345,124 @@ function TrainingGuide() {
   );
 }
 
+function TrainingGuideWeek2() {
+  const exercises = [
+    {
+      num: 1,
+      exercise: 'May Dap Dui (Leg Press)',
+      group: 'Dui, Mong',
+      setsReps: '3 hiep',
+      hung: '110 kg (8-10 reps)',
+      nga: '5 kg (12 reps)',
+      note: 'Tho ra khi dap. Nga: khong khoa goi, huong goi theo mui chan.',
+    },
+    {
+      num: 2,
+      exercise: 'May Keo Xa (Lat Pulldown)',
+      group: 'Lung rong',
+      setsReps: '3 hiep',
+      hung: '40 kg (8-10 reps)',
+      nga: '17.5-20 kg (8-10 reps)',
+      note: 'Tho ra khi keo xuong nguc. Uon nguc, khong giat lung.',
+    },
+    {
+      num: 3,
+      exercise: 'May Ep/Day Nguc (Pec Deck/Chest Press)',
+      group: 'Nguc, Vai',
+      setsReps: '3 hiep',
+      hung: '57.5 kg (8-10 reps)',
+      nga: '10 kg (10-12 reps)',
+      note: 'Tho ra khi ep/day. Mo bien do tay truoc khi ep lai.',
+    },
+    {
+      num: 4,
+      exercise: 'May Cheo Thuyen (Seated Cable Row)',
+      group: 'Lung giua',
+      setsReps: '3 hiep',
+      hung: '35-40 kg (8-12 reps)',
+      nga: '10-15 kg (10-12 reps)',
+      note: 'Tho ra khi keo vao bung. Ep hai ba vai o diem cuoi.',
+    },
+    {
+      num: 5,
+      exercise: 'Keo Cap Tay Sau (Triceps Pushdown)',
+      group: 'Bap tay sau',
+      setsReps: '3 hiep',
+      hung: 'Tuy suc chon ta',
+      nga: '10-11 kg (15-20 reps)',
+      note: 'Tho ra khi nhan cap. Giu cui cho sat mang suon.',
+    },
+    {
+      num: 6,
+      exercise: 'Core/Glute tren tham',
+      group: 'Bung, Mong',
+      setsReps: '3 hiep',
+      hung: 'Plank 45-60 giay',
+      nga: 'Glute Bridge 15-20 reps',
+      note: 'Hung: tho nong deu. Nga: day hong tho ra, ha xuong hit vao.',
+    },
+  ];
+
+  return (
+    <div>
+      <InfoCard className="mb-6 bg-amber-50 border-amber-200">
+        <p className="text-sm text-amber-900">
+          <strong>Muc tieu Week 2:</strong> Hung tang ta theo progressive overload, Nga uu tien form an toan goi va toning bap tay/dui.
+        </p>
+      </InfoCard>
+
+      <Section title="Khoi Dong (5-10 phut)" icon={Timer}>
+        <InfoCard>
+          <BulletList items={[
+            'May di bo hoac xe dap.',
+            'Nga: khong chinh do doc treadmill.',
+            'Khoi dong nhe de vao nhip truoc khi nang ta.',
+          ]} />
+        </InfoCard>
+      </Section>
+
+      <Section title="Bang Bai Tap Khang Luc - Week 2" icon={Dumbbell}>
+        <div className="space-y-3">
+          {exercises.map((ex) => (
+            <InfoCard key={ex.num} className="border-l-4 border-l-indigo-400">
+              <div className="flex items-baseline gap-2 mb-1">
+                <Badge color="bg-indigo-100 text-indigo-700">{ex.num}</Badge>
+                <span className="text-xs font-bold text-gray-500 uppercase">{ex.group}</span>
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">{ex.exercise}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                <div className="p-2 rounded bg-indigo-50 text-indigo-800">
+                  <p className="font-semibold">Hung</p>
+                  <p>{ex.hung}</p>
+                </div>
+                <div className="p-2 rounded bg-emerald-50 text-emerald-800">
+                  <p className="font-semibold">Nga</p>
+                  <p>{ex.nga}</p>
+                </div>
+                <div className="p-2 rounded bg-gray-50 text-gray-700">
+                  <p className="font-semibold">Sets</p>
+                  <p>{ex.setsReps}</p>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-gray-600">{ex.note}</p>
+            </InfoCard>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Finisher va Recovery" icon={Bike}>
+        <InfoCard className="bg-green-50 border-green-200">
+          <BulletList items={[
+            'Cardio 10-15 phut: Air Bike hoac Elliptical o cuong do Zone 2.',
+            'Gian co 5 phut sau tap.',
+            'Nga: bat buoc gian bap chan va dui truoc/sau, giu 20-30 giay moi ben.',
+          ]} />
+        </InfoCard>
+      </Section>
+    </div>
+  );
+}
+
 /* ═══════════════ TAB 3: TRACKING ═══════════════ */
 function TrackingGuide() {
   return (
@@ -432,6 +555,7 @@ function TrackingGuide() {
 export default function Guides() {
   const { t } = useLang();
   const [activeTab, setActiveTab] = useState<TabId>('nutrition');
+  const [trainingWeek, setTrainingWeek] = useState<TrainingWeek>(LATEST_TRAINING_WEEK);
 
   const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: 'nutrition', label: t('guides.tab1'), icon: ChefHat },
@@ -452,7 +576,12 @@ export default function Guides() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              if (tab.id === 'training') {
+                setTrainingWeek(LATEST_TRAINING_WEEK);
+              }
+            }}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer whitespace-nowrap ${
               activeTab === tab.id
                 ? 'bg-white/80 text-indigo-600 shadow-sm'
@@ -467,7 +596,54 @@ export default function Guides() {
 
       {/* Tab Content */}
       {activeTab === 'nutrition' && <NutritionGuide />}
-      {activeTab === 'training' && <TrainingGuide />}
+      {activeTab === 'training' && (
+        <div>
+          <div className="glass rounded-2xl p-2 mb-6 flex items-center justify-between gap-2">
+            <button
+              onClick={() => setTrainingWeek((w) => (w === 1 ? 1 : (w - 1) as TrainingWeek))}
+              disabled={trainingWeek === 1}
+              className="min-h-10 px-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
+            >
+              <ChevronLeft size={16} />
+              Prev
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTrainingWeek(1)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer ${
+                  trainingWeek === 1 ? 'bg-indigo-500/20 text-indigo-700' : 'text-gray-500 hover:bg-white/50'
+                }`}
+              >
+                {t('guides.week1')}
+              </button>
+              <button
+                onClick={() => setTrainingWeek(2)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer ${
+                  trainingWeek === 2 ? 'bg-indigo-500/20 text-indigo-700' : 'text-gray-500 hover:bg-white/50'
+                }`}
+              >
+                {t('guides.week2')}
+              </button>
+              {trainingWeek === LATEST_TRAINING_WEEK && (
+                <Badge color="bg-emerald-100 text-emerald-700">{t('guides.latest')}</Badge>
+              )}
+            </div>
+
+            <button
+              onClick={() => setTrainingWeek((w) => (w === LATEST_TRAINING_WEEK ? LATEST_TRAINING_WEEK : (w + 1) as TrainingWeek))}
+              disabled={trainingWeek === LATEST_TRAINING_WEEK}
+              className="min-h-10 px-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
+            >
+              Next
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {trainingWeek === 1 && <TrainingGuideWeek1 />}
+          {trainingWeek === 2 && <TrainingGuideWeek2 />}
+        </div>
+      )}
       {activeTab === 'tracking' && <TrackingGuide />}
     </div>
   );

@@ -89,6 +89,12 @@ const translations = {
     'log.sleep': 'Sleep',
     'log.cheat': 'Cheat',
     'log.energy': 'Energy',
+    'log.exportCsv': 'Export CSV',
+    'log.exportHung': 'Export Hung',
+    'log.exportNga': 'Export Nga',
+    'log.exportBoth': 'Export Both',
+    'log.exportNoData': 'No logs to export for this selection.',
+    'log.exportDone': 'CSV exported successfully.',
 
     // Log Modal
     'modal.title': 'Daily Log',
@@ -210,6 +216,10 @@ const translations = {
     'guides.tab1': 'Nutrition',
     'guides.tab2': 'Training',
     'guides.tab3': 'Tracking',
+    'guides.week': 'Week',
+    'guides.latest': 'Latest',
+    'guides.week1': 'Week 1',
+    'guides.week2': 'Week 2',
   },
 
   vi: {
@@ -298,6 +308,12 @@ const translations = {
     'log.sleep': 'Ngủ',
     'log.cheat': 'Gian lận',
     'log.energy': 'NL',
+    'log.exportCsv': 'Xuất CSV',
+    'log.exportHung': 'Xuất Hưng',
+    'log.exportNga': 'Xuất Nga',
+    'log.exportBoth': 'Xuất Cả Hai',
+    'log.exportNoData': 'Không có dữ liệu để xuất theo lựa chọn này.',
+    'log.exportDone': 'Đã xuất CSV thành công.',
 
     // Log Modal
     'modal.title': 'Nhật Ký Hôm Nay',
@@ -419,6 +435,10 @@ const translations = {
     'guides.tab1': 'Dinh Dưỡng',
     'guides.tab2': 'Tập Luyện',
     'guides.tab3': 'Đo Lường',
+    'guides.week': 'Tuần',
+    'guides.latest': 'Mới nhất',
+    'guides.week1': 'Tuần 1',
+    'guides.week2': 'Tuần 2',
   },
 } as const;
 

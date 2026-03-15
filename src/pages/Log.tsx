@@ -1,7 +1,8 @@
 // src/pages/Log.tsx
 import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Plus, Scale, Dumbbell, Droplets, Moon, UtensilsCrossed, Zap } from 'lucide-react';
+import { Plus, Scale, Dumbbell, Droplets, Moon, UtensilsCrossed, Zap, Download } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import { useWeightData } from '../hooks/useWeightData';
 import { useGoals } from '../hooks/useGoals';
@@ -13,6 +14,70 @@ import DayDetailSheet from '../components/DayDetailSheet';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import type { DailyLog, UserName } from '../types/database';
 import { useLang } from '../contexts/LangContext';
+
+type ExportScope = 'Hung' | 'Nga' | 'Both';
+
+function escapeCsvCell(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function toCsv(logs: DailyLog[]): string {
+  const headers = [
+    'date',
+    'user_name',
+    'weight_kg',
+    'gym_checkin',
+    'water_liters',
+    'cheat_meal',
+    'sleep_score',
+    'energy_level',
+    'waist_cm',
+    'belly_cm',
+    'hip_cm',
+    'thigh_cm',
+    'notes',
+    'created_at',
+    'id',
+    'user_id',
+  ];
+
+  const rows = logs.map((log) => [
+    log.date,
+    log.user_name,
+    log.weight_kg.toString(),
+    log.gym_checkin ? 'true' : 'false',
+    log.water_liters?.toString() ?? '',
+    log.cheat_meal ? 'true' : 'false',
+    log.sleep_score?.toString() ?? '',
+    log.energy_level?.toString() ?? '',
+    log.waist_cm?.toString() ?? '',
+    log.belly_cm?.toString() ?? '',
+    log.hip_cm?.toString() ?? '',
+    log.thigh_cm?.toString() ?? '',
+    log.notes ?? '',
+    log.created_at,
+    log.id,
+    log.user_id,
+  ]);
+
+  const csvLines = [headers, ...rows].map((row) => row.map((v) => escapeCsvCell(v)).join(','));
+  return csvLines.join('\n');
+}
+
+function downloadCsv(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export default function Log() {
   const { t } = useLang();
@@ -32,6 +97,7 @@ export default function Log() {
   const [detailLog, setDetailLog] = useState<DailyLog | null>(null);
   const [editInitial, setEditInitial] = useState<{ date: string; user: UserName } | null>(null);
   const [filterUser, setFilterUser] = useState<UserName | 'Both'>(myName);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Derive users from goals — always has both users regardless of log history
   const users: AppUser[] = useMemo(() => {
@@ -59,6 +125,26 @@ export default function Log() {
         .filter((l) => filterUser === 'Both' || l.user_name === filterUser),
     [logs, filterUser]
   );
+
+  const handleExportCsv = (scope: ExportScope) => {
+    const scopedLogs = [...logs]
+      .filter((l) => scope === 'Both' || l.user_name === scope)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (scopedLogs.length === 0) {
+      toast(t('log.exportNoData'));
+      setExportOpen(false);
+      return;
+    }
+
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const fileTag = scope === 'Both' ? 'both' : scope.toLowerCase();
+    const filename = `speedyfit-logs-${fileTag}-${today}.csv`;
+    const csv = toCsv(scopedLogs);
+    downloadCsv(filename, csv);
+    toast.success(t('log.exportDone'));
+    setExportOpen(false);
+  };
 
   if (loading) {
     return (
@@ -93,13 +179,46 @@ export default function Log() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-900">{t('log.title')}</h1>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 glass-btn-primary px-4 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer min-h-12"
-        >
-          <Plus size={18} />
-          {t('log.newLog')}
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              onClick={() => setExportOpen((p) => !p)}
+              className="flex items-center gap-2 min-h-12 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer glass text-gray-700 hover:bg-white/70"
+            >
+              <Download size={18} />
+              {t('log.exportCsv')}
+            </button>
+            {exportOpen && (
+              <div className="absolute right-0 mt-2 w-44 rounded-xl glass-strong shadow-lg border border-white/50 p-1.5 z-20">
+                <button
+                  onClick={() => handleExportCsv('Hung')}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-indigo-50 cursor-pointer"
+                >
+                  {t('log.exportHung')}
+                </button>
+                <button
+                  onClick={() => handleExportCsv('Nga')}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-emerald-50 cursor-pointer"
+                >
+                  {t('log.exportNga')}
+                </button>
+                <button
+                  onClick={() => handleExportCsv('Both')}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                >
+                  {t('log.exportBoth')}
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 glass-btn-primary px-4 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer min-h-12"
+          >
+            <Plus size={18} />
+            {t('log.newLog')}
+          </button>
+        </div>
       </div>
 
       {/* User filter */}
