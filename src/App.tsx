@@ -1,17 +1,29 @@
 // src/App.tsx
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Log from './pages/Log';
-import Rulebook from './pages/Rulebook';
-import Guides from './pages/Guides';
-import Settings from './pages/Settings';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/Navbar';
 import QuickLogFAB from './components/QuickLogFAB';
 import { LangProvider } from './contexts/LangContext';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Log = lazy(() => import('./pages/Log'));
+const Rulebook = lazy(() => import('./pages/Rulebook'));
+const Guides = lazy(() => import('./pages/Guides'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+function RouteSkeleton() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-4">
+      <div className="h-8 w-40 bg-gray-200 rounded animate-pulse" />
+      <div className="h-32 w-full bg-gray-200 rounded-2xl animate-pulse" />
+      <div className="h-56 w-full bg-gray-200 rounded-2xl animate-pulse" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
@@ -45,7 +57,9 @@ export default function App() {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Suspense fallback={<RouteSkeleton />}>
+                <Dashboard />
+              </Suspense>
             </ProtectedRoute>
           }
         />
@@ -53,7 +67,9 @@ export default function App() {
           path="/log"
           element={
             <ProtectedRoute>
-              <Log />
+              <Suspense fallback={<RouteSkeleton />}>
+                <Log />
+              </Suspense>
             </ProtectedRoute>
           }
         />
@@ -61,7 +77,9 @@ export default function App() {
           path="/rulebook"
           element={
             <ProtectedRoute>
-              <Rulebook />
+              <Suspense fallback={<RouteSkeleton />}>
+                <Rulebook />
+              </Suspense>
             </ProtectedRoute>
           }
         />
@@ -69,7 +87,9 @@ export default function App() {
           path="/guides"
           element={
             <ProtectedRoute>
-              <Guides />
+              <Suspense fallback={<RouteSkeleton />}>
+                <Guides />
+              </Suspense>
             </ProtectedRoute>
           }
         />
@@ -77,7 +97,9 @@ export default function App() {
           path="/settings"
           element={
             <ProtectedRoute>
-              <Settings />
+              <Suspense fallback={<RouteSkeleton />}>
+                <Settings />
+              </Suspense>
             </ProtectedRoute>
           }
         />

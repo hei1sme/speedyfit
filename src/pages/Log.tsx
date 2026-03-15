@@ -1,8 +1,9 @@
 // src/pages/Log.tsx
-import { useState, useMemo } from 'react';
-import { format, parseISO } from 'date-fns';
+import { useState, useMemo, useEffect } from 'react';
+import { format, parseISO, subDays } from 'date-fns';
 import { Plus, Scale, Dumbbell, Droplets, Moon, UtensilsCrossed, Zap, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 
 import { useWeightData } from '../hooks/useWeightData';
 import { useGoals } from '../hooks/useGoals';
@@ -14,8 +15,10 @@ import DayDetailSheet from '../components/DayDetailSheet';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import type { DailyLog, UserName } from '../types/database';
 import { useLang } from '../contexts/LangContext';
+import { getUserNameFromSession, getUserPalette } from '../lib/userIdentity';
 
 type ExportScope = 'Hung' | 'Nga' | 'Both';
+type ExportRange = '30D' | 'All';
 
 function escapeCsvCell(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -84,20 +87,33 @@ export default function Log() {
   const { logs, loading, error, refetch } = useWeightData();
   const { goals } = useGoals();
   const { session } = useAuth();
-  const UID_TO_NAME: Record<string, UserName> = {
-    'a1337686-b292-4cc9-b31e-4204cb0ebd5e': 'Hung',
-    '0e3139b3-1f77-4c77-8cb1-86396d2450f5': 'Nga',
-  };
-  const myName =
-    (session?.user.user_metadata?.user_name as UserName) ??
-    UID_TO_NAME[session?.user.id ?? ''] ??
-    'Hung' as UserName;
+  const myName = getUserNameFromSession(session);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [detailLog, setDetailLog] = useState<DailyLog | null>(null);
   const [editInitial, setEditInitial] = useState<{ date: string; user: UserName } | null>(null);
   const [filterUser, setFilterUser] = useState<UserName | 'Both'>(myName);
   const [exportOpen, setExportOpen] = useState(false);
+  const [exportRange, setExportRange] = useState<ExportRange>('30D');
+  const [initialStep, setInitialStep] = useState<'morning' | 'evening'>('morning');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (!action) return;
+
+    if (action === 'export') {
+      setExportOpen(true);
+    } else if (action === 'evening') {
+      setInitialStep('evening');
+      setModalOpen(true);
+    } else {
+      setInitialStep('morning');
+      setModalOpen(true);
+    }
+
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Derive users from goals — always has both users regardless of log history
   const users: AppUser[] = useMemo(() => {
@@ -127,8 +143,10 @@ export default function Log() {
   );
 
   const handleExportCsv = (scope: ExportScope) => {
+    const fromDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
     const scopedLogs = [...logs]
       .filter((l) => scope === 'Both' || l.user_name === scope)
+      .filter((l) => exportRange === 'All' || l.date >= fromDate)
       .sort((a, b) => a.date.localeCompare(b.date));
 
     if (scopedLogs.length === 0) {
@@ -139,7 +157,8 @@ export default function Log() {
 
     const today = format(new Date(), 'yyyy-MM-dd');
     const fileTag = scope === 'Both' ? 'both' : scope.toLowerCase();
-    const filename = `speedyfit-logs-${fileTag}-${today}.csv`;
+    const rangeTag = exportRange === 'All' ? 'all' : '30d';
+    const filename = `speedyfit-logs-${fileTag}-${rangeTag}-${today}.csv`;
     const csv = toCsv(scopedLogs);
     downloadCsv(filename, csv);
     toast.success(t('log.exportDone'));
@@ -190,6 +209,28 @@ export default function Log() {
             </button>
             {exportOpen && (
               <div className="absolute right-0 mt-2 w-44 rounded-xl glass-strong shadow-lg border border-white/50 p-1.5 z-20">
+                <div className="flex items-center gap-1 px-1 pb-1 mb-1 border-b border-white/40">
+                  <button
+                    onClick={() => setExportRange('30D')}
+                    className={`flex-1 text-xs px-2 py-1 rounded-md cursor-pointer ${
+                      exportRange === '30D'
+                        ? 'bg-indigo-500/20 text-indigo-700'
+                        : 'text-gray-500 hover:bg-white/50'
+                    }`}
+                  >
+                    30D
+                  </button>
+                  <button
+                    onClick={() => setExportRange('All')}
+                    className={`flex-1 text-xs px-2 py-1 rounded-md cursor-pointer ${
+                      exportRange === 'All'
+                        ? 'bg-indigo-500/20 text-indigo-700'
+                        : 'text-gray-500 hover:bg-white/50'
+                    }`}
+                  >
+                    All
+                  </button>
+                </div>
                 <button
                   onClick={() => handleExportCsv('Hung')}
                   className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-indigo-50 cursor-pointer"
@@ -212,7 +253,10 @@ export default function Log() {
             )}
           </div>
           <button
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              setInitialStep('morning');
+              setModalOpen(true);
+            }}
             className="flex items-center gap-2 glass-btn-primary px-4 py-2.5 rounded-xl font-medium transition-all duration-200 cursor-pointer min-h-12"
           >
             <Plus size={18} />
@@ -249,7 +293,10 @@ export default function Log() {
           <p className="text-gray-500 font-medium mb-1">{t('log.emptyTitle')}</p>
           <p className="text-sm text-gray-400 mb-4">{t('log.emptyDesc')}</p>
           <button
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              setInitialStep('morning');
+              setModalOpen(true);
+            }}
             className="glass-btn-primary px-5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer"
           >
             {t('log.emptyBtn')}
@@ -277,9 +324,7 @@ export default function Log() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      log.user_name === 'Hung'
-                        ? 'bg-indigo-100 text-indigo-700'
-                        : 'bg-emerald-100 text-emerald-700'
+                      getUserPalette(log.user_name).badge
                     }`}
                   >
                     {log.user_name}
@@ -345,6 +390,7 @@ export default function Log() {
         users={users}
         initialDate={editInitial?.date}
         initialUser={editInitial?.user ?? myName}
+        initialStep={initialStep}
       />
 
       {/* Day Detail Sheet */}
@@ -354,6 +400,7 @@ export default function Log() {
         onEdit={() => {
           if (!detailLog) return;
           setEditInitial({ date: detailLog.date, user: detailLog.user_name });
+          setInitialStep('morning');
           setDetailLog(null);
           setModalOpen(true);
         }}

@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useLang } from '../contexts/LangContext';
 import type { TranslationKey } from '../lib/i18n';
 import type { UserName } from '../types/database';
+import { getUserNameFromSession } from '../lib/userIdentity';
 
 export interface AppUser {
   id: string;
@@ -22,6 +23,7 @@ interface LogModalProps {
   users: AppUser[];
   initialDate?: string;
   initialUser?: UserName;
+  initialStep?: 'morning' | 'evening';
 }
 
 interface FormState {
@@ -122,9 +124,10 @@ function validate(form: FormState, t: (k: TranslationKey) => string): FormErrors
   return errors;
 }
 
-export default function LogModal({ open, onClose, onSaved, users, initialDate, initialUser }: LogModalProps) {
+export default function LogModal({ open, onClose, onSaved, users, initialDate, initialUser, initialStep = 'morning' }: LogModalProps) {
   const { session } = useAuth();
   const { t } = useLang();
+  const [step, setStep] = useState<'morning' | 'evening'>('morning');
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
@@ -132,15 +135,8 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
   const [measureOpen, setMeasureOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Default to logged-in user — metadata first, UID fallback
-  const UID_TO_NAME: Record<string, UserName> = {
-    'a1337686-b292-4cc9-b31e-4204cb0ebd5e': 'Hung',
-    '0e3139b3-1f77-4c77-8cb1-86396d2450f5': 'Nga',
-  };
-  const myName =
-    (session?.user.user_metadata?.user_name as UserName) ??
-    UID_TO_NAME[session?.user.id ?? ''] ??
-    'Hung' as UserName;
+  // Default to logged-in user from shared identity resolver
+  const myName = getUserNameFromSession(session);
   const [logFor, setLogFor] = useState<UserName>(myName);
 
   // Fetch existing log for the selected date+user to pre-populate
@@ -182,6 +178,7 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
     if (open) {
       const startDate = initialDate ?? format(new Date(), 'yyyy-MM-dd');
       const startUser = initialUser ?? myName;
+      setStep(initialStep);
       setForm({ ...initialForm, date: startDate });
       setErrors({});
       setTouched(new Set());
@@ -189,8 +186,7 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
       setIsEditing(false);
       fetchExistingLog(startDate, startUser);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]); // intentionally only re-run when open changes
+  }, [open, initialDate, initialUser, myName, fetchExistingLog, initialStep]);
 
   // Re-fetch when date or user changes
   const handleDateChange = (newDate: string) => {
@@ -223,6 +219,17 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
     if (touched.has(key)) {
       setErrors(validate(updated, t));
     }
+  };
+
+  const handleContinueToEvening = () => {
+    const allErrors = validate(form, t);
+    const morningFields: (keyof FormErrors)[] = ['date', 'weight_kg', 'sleep_score'];
+    const morningErrors = morningFields.filter((k) => !!allErrors[k]);
+    setTouched((prev) => new Set([...Array.from(prev), ...morningFields]));
+    setErrors(allErrors);
+
+    if (morningErrors.length > 0) return;
+    setStep('evening');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -372,7 +379,17 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
               )}
             </div>
 
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+              <span className={`px-2 py-1 rounded-md ${step === 'morning' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                1. {t('modal.morningSection')}
+              </span>
+              <span className={`px-2 py-1 rounded-md ${step === 'evening' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}`}>
+                2. {t('modal.eveningSection')}
+              </span>
+            </div>
+
             {/* ══════ Morning Section ══════ */}
+            {step === 'morning' && (
             <div className="border border-amber-200/50 rounded-xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50/40">
                 <Sun size={16} className="text-amber-500" />
@@ -429,8 +446,10 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
                 </div>
               </div>
             </div>
+            )}
 
             {/* ══════ Evening Section ══════ */}
+            {step === 'evening' && (
             <div className="border border-indigo-200/50 rounded-xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50/40">
                 <Moon size={16} className="text-indigo-500" />
@@ -509,8 +528,10 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
                 </label>
               </div>
             </div>
+            )}
 
             {/* Body Measurements (collapsible) */}
+            {step === 'evening' && (
             <div className="border border-white/30 rounded-xl overflow-hidden">
               <button
                 type="button"
@@ -554,8 +575,10 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
                 </div>
               )}
             </div>
+            )}
 
             {/* Notes */}
+            {step === 'evening' && (
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700">
@@ -583,15 +606,35 @@ export default function LogModal({ open, onClose, onSaved, users, initialDate, i
                 <p className="text-xs text-red-600 mt-1">{fieldError('notes')}</p>
               )}
             </div>
+            )}
 
             {/* Submit */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full min-h-12 glass-btn-primary rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {submitting ? t('modal.saving') : t('modal.save')}
-            </button>
+            {step === 'morning' ? (
+              <button
+                type="button"
+                onClick={handleContinueToEvening}
+                className="w-full min-h-12 glass-btn-primary rounded-xl font-medium transition-all duration-200 cursor-pointer"
+              >
+                {t('modal.next')}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('morning')}
+                  className="flex-1 min-h-12 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer glass text-gray-700 hover:bg-white/70"
+                >
+                  {t('modal.back')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 min-h-12 glass-btn-primary rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {submitting ? t('modal.saving') : t('modal.save')}
+                </button>
+              </div>
+            )}
           </form>
         </div>
       </div>

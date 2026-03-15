@@ -1,6 +1,7 @@
 // src/components/KPICard.tsx
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 export interface KPICardProps {
   label: string;
@@ -10,6 +11,7 @@ export interface KPICardProps {
   icon?: LucideIcon;
   variant?: 'default' | 'success' | 'warning' | 'danger';
   loading?: boolean;
+  help?: ReactNode;
 }
 
 const variantStyles: Record<string, string> = {
@@ -34,6 +36,7 @@ export default function KPICard({
   icon: Icon,
   variant = 'default',
   loading = false,
+  help,
 }: KPICardProps) {
   if (loading) {
     return (
@@ -51,7 +54,7 @@ export default function KPICard({
       className={`rounded-2xl p-4 md:p-6 glass-hover ${variantStyles[variant]} ${variantTint[variant]}`}
     >
       <div className="flex items-center justify-between mb-1">
-        <span className="text-sm text-gray-500">{label}</span>
+        <span className="text-sm text-gray-500 inline-flex items-center gap-1">{label}{help}</span>
         {Icon && <Icon size={18} className="text-gray-400" />}
       </div>
 

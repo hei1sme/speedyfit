@@ -1,6 +1,7 @@
 // src/pages/Dashboard.tsx
 import { useState, useMemo } from 'react';
 import { addDays, parseISO, format, subDays, startOfISOWeek, endOfISOWeek } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import {
   Scale,
   TrendingDown,
@@ -12,6 +13,8 @@ import {
   Ruler,
   Flame,
   Moon,
+  Circle,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   ScatterChart,
@@ -42,6 +45,12 @@ import DayDetailSheet from '../components/DayDetailSheet';
 import ViewToggle from '../components/ViewToggle';
 import DateRangePicker from '../components/DateRangePicker';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import { getUserNameFromSession } from '../lib/userIdentity';
+import TodayScoreHero from '../components/TodayScoreHero';
+import OnTrackCard from '../components/OnTrackCard';
+import MomentumMiniCharts from '../components/MomentumMiniCharts';
+import WeeklyComplianceGrid from '../components/WeeklyComplianceGrid';
+import MetricTooltip from '../components/MetricTooltip';
 
 // ---- Analytics helpers (DOC 03) ----
 
@@ -150,6 +159,7 @@ function filterLogsByRange(logs: DailyLog[], range: '7D' | '30D' | '90D' | 'All'
 export default function Dashboard() {
   const { session } = useAuth();
   const { t } = useLang();
+  const navigate = useNavigate();
 
   // Persisted view preference — default to 'simple'
   const [view, setView] = useState<'simple' | 'advanced'>(() => {
@@ -163,15 +173,7 @@ export default function Dashboard() {
   const { logs: allLogs, loading: logsLoading, error: logsError } = useWeightData();
   const { goals, loading: goalLoading } = useGoals();
 
-  // Current user's name — metadata first, UID fallback, last resort 'Hung'
-  const UID_TO_NAME: Record<string, UserName> = {
-    'a1337686-b292-4cc9-b31e-4204cb0ebd5e': 'Hung',
-    '0e3139b3-1f77-4c77-8cb1-86396d2450f5': 'Nga',
-  };
-  const myName: UserName =
-    (session?.user.user_metadata?.user_name as UserName) ??
-    UID_TO_NAME[session?.user.id ?? ''] ??
-    'Hung';
+  const myName: UserName = getUserNameFromSession(session);
 
   // User focus filter — defaults to logged-in user
   const [focusUser, setFocusUser] = useState<'Hung' | 'Nga' | 'Both'>(myName);
@@ -311,6 +313,130 @@ export default function Dashboard() {
     return 'tipGreat';
   }, [latestLog, waterTarget, sleepTarget]);
 
+  const onTrackStatus = useMemo(() => {
+    const status: 'on-track' | 'mixed' | 'off-track' =
+      weeklyDelta !== null && weeklyDelta <= 0 && eta
+        ? 'on-track'
+        : weeklyDelta !== null && weeklyDelta <= 0.2
+        ? 'mixed'
+        : 'off-track';
+
+    const detail =
+      status === 'on-track'
+        ? t('dash.onTrackGood')
+        : status === 'mixed'
+        ? t('dash.onTrackMixed')
+        : t('dash.onTrackRisk');
+
+    return { status, detail };
+  }, [eta, t, weeklyDelta]);
+
+  const momentumData = useMemo(() => {
+    return kpiLogs.slice(-7).map((log) => ({
+      date: log.date,
+      weight: log.weight_kg,
+      water: log.water_liters ?? undefined,
+      sleep: log.sleep_score ?? undefined,
+      energy: log.energy_level ?? undefined,
+    }));
+  }, [kpiLogs]);
+
+  // ---- Today checklist + insight cards ----
+  const todayChecklist = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const todayLog = kpiLogs.find((l) => l.date === today) ?? null;
+
+    const items = [
+      {
+        key: 'weight',
+        label: t('dash.checkWeight'),
+        done: todayLog ? todayLog.weight_kg > 0 : false,
+      },
+      {
+        key: 'gym',
+        label: t('dash.checkGym'),
+        done: !!todayLog?.gym_checkin,
+      },
+      {
+        key: 'water',
+        label: t('dash.checkWater'),
+        done: (todayLog?.water_liters ?? 0) >= waterTarget,
+      },
+      {
+        key: 'sleep',
+        label: t('dash.checkSleep'),
+        done: (todayLog?.sleep_score ?? 0) >= sleepTarget,
+      },
+    ];
+
+    const completed = items.filter((i) => i.done).length;
+    return { items, completed, total: items.length, hasTodayLog: !!todayLog };
+  }, [kpiLogs, sleepTarget, t, waterTarget]);
+
+  const todayScore = useMemo(() => {
+    const points = todayChecklist.completed * 25;
+
+    const statusLabel =
+      points >= 75
+        ? t('dash.scoreStrong')
+        : points >= 45
+        ? t('dash.scoreFair')
+        : t('dash.scoreNeedsFocus');
+
+    return {
+      points,
+      statusLabel,
+      summary: t('dash.scoreSummary'),
+    };
+  }, [t, todayChecklist.completed]);
+
+  const insightCards = useMemo(() => {
+    const last7 = kpiLogs.slice(-7);
+    const hydrationHit =
+      last7.length > 0
+        ? Math.round((last7.filter((l) => (l.water_liters ?? 0) >= waterTarget).length / last7.length) * 100)
+        : 0;
+    const avgSleep7 =
+      last7.length > 0
+        ? parseFloat((last7.reduce((sum, l) => sum + (l.sleep_score ?? 0), 0) / last7.length).toFixed(1))
+        : 0;
+
+    return [
+      {
+        title: t('dash.insightWeightTitle'),
+        value:
+          weeklyDelta === null
+            ? t('dash.insightNoData')
+            : `${weeklyDelta > 0 ? '+' : ''}${weeklyDelta.toFixed(1)} kg`,
+        tone:
+          weeklyDelta === null
+            ? 'neutral'
+            : weeklyDelta <= 0
+            ? 'good'
+            : 'warn',
+        note: t(
+          weeklyDelta === null
+            ? 'dash.insightWeightNoData'
+            : weeklyDelta <= 0
+            ? 'dash.insightWeightGood'
+            : 'dash.insightWeightWarn'
+        ),
+      },
+      {
+        title: t('dash.insightHydrationTitle'),
+        value: `${hydrationHit}%`,
+        tone: hydrationHit >= 70 ? 'good' : hydrationHit >= 40 ? 'neutral' : 'warn',
+        note: t('dash.insightHydrationNote'),
+      },
+      {
+        title: t('dash.insightRecoveryTitle'),
+        value: last7.length > 0 ? `${avgSleep7}/10` : t('dash.insightNoData'),
+        tone: avgSleep7 >= sleepTarget ? 'good' : avgSleep7 >= sleepTarget - 1 ? 'neutral' : 'warn',
+        note: t('dash.insightRecoveryNote'),
+      },
+    ] as const;
+  }, [kpiLogs, sleepTarget, t, waterTarget, weeklyDelta]);
+
   // Scatter data: weight vs gym (advanced only) — use focused user's data
   const scatterData = useMemo(() => {
     if (!isAdvanced) return [];
@@ -399,6 +525,15 @@ export default function Dashboard() {
       </div>
 
       {/* KPI row */}
+      <TodayScoreHero
+        title={t('dash.scoreTitle')}
+        score={todayScore.points}
+        statusLabel={todayScore.statusLabel}
+        summary={todayScore.summary}
+        ctaLabel={t('dash.quickLog')}
+        onQuickLog={() => navigate('/log?action=morning')}
+      />
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <KPICard
           label={`${focusLabel}'s ${t('dash.weight')}`}
@@ -412,6 +547,12 @@ export default function Dashboard() {
           value={myGoal ? `${progress.toFixed(0)}%` : '—'}
           icon={Target}
           variant={progress >= 100 ? 'success' : 'default'}
+          help={
+            <MetricTooltip
+              label={t('dash.goalFormula')}
+              content={t('dash.goalFormulaContent')}
+            />
+          }
         />
         <KPICard
           label={t('dash.gymStreak')}
@@ -485,7 +626,13 @@ export default function Dashboard() {
 
         <div className="rounded-2xl glass border border-purple-200/30 bg-purple-50/30 p-4 md:p-6">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-gray-500">{t('dash.consistency')}</span>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-500">{t('dash.consistency')}</span>
+              <MetricTooltip
+                label={t('dash.consistencyFormula')}
+                content={t('dash.consistencyFormulaContent')}
+              />
+            </div>
             <Flame size={18} className="text-purple-500" />
           </div>
           <div className="flex items-baseline gap-1.5">
@@ -510,6 +657,84 @@ export default function Dashboard() {
           <p className="text-base font-semibold text-gray-800 mt-2">
             {t(`dash.${todayTip}` as any)}
           </p>
+        </div>
+      </div>
+
+      {isAdvanced && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+          <OnTrackCard
+            title={t('dash.onTrackTitle')}
+            status={onTrackStatus.status}
+            detail={onTrackStatus.detail}
+            weeklyDelta={weeklyDelta}
+            progress={progress}
+            labels={{
+              onTrack: t('dash.onTrackLabel'),
+              mixed: t('dash.mixedLabel'),
+              offTrack: t('dash.offTrackLabel'),
+              weeklyDelta: t('dash.weeklyChange'),
+              progress: t('dash.goalProgress'),
+            }}
+          />
+
+          <div className="lg:col-span-2">
+            <MomentumMiniCharts
+              title={t('dash.momentumTitle')}
+              data={momentumData}
+              labels={{
+                weight: t('dash.weight'),
+                water: t('dash.avgWater'),
+                sleep: t('dash.avgSleep'),
+                energy: t('dash.avgEnergy'),
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Today checklist + auto insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+        <div className="lg:col-span-1 rounded-2xl glass border border-emerald-200/40 bg-emerald-50/30 p-4 md:p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold text-gray-900">{t('dash.checklistTitle')}</h3>
+            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-white/70 text-emerald-700">
+              {todayChecklist.completed}/{todayChecklist.total}
+            </span>
+          </div>
+          {!todayChecklist.hasTodayLog && (
+            <p className="text-xs text-amber-600 mt-2">{t('dash.checklistNoLog')}</p>
+          )}
+          <div className="mt-3 space-y-2">
+            {todayChecklist.items.map((item) => (
+              <div key={item.key} className="flex items-center gap-2 text-sm">
+                {item.done ? (
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                ) : (
+                  <Circle size={16} className="text-gray-400" />
+                )}
+                <span className={item.done ? 'text-gray-800' : 'text-gray-500'}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+          {insightCards.map((card) => {
+            const toneClass =
+              card.tone === 'good'
+                ? 'border-green-200/50 bg-green-50/40'
+                : card.tone === 'warn'
+                ? 'border-amber-200/50 bg-amber-50/40'
+                : 'border-blue-200/50 bg-blue-50/40';
+
+            return (
+              <div key={card.title} className={`rounded-2xl glass border p-4 ${toneClass}`}>
+                <p className="text-xs text-gray-500">{card.title}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
+                <p className="text-xs text-gray-500 mt-1">{card.note}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -725,6 +950,13 @@ export default function Dashboard() {
         <>
           {/* Habit Heatmap */}
           <HabitHeatmap logs={focusedLogs} days={30} />
+
+          <WeeklyComplianceGrid
+            title={t('dash.complianceTitle')}
+            logs={kpiLogs}
+            waterTarget={waterTarget}
+            sleepTarget={sleepTarget}
+          />
 
           {/* Weekly Summary Bar (week-over-week comparison) */}
           <WeeklySummaryBar logs={focusedLogs} weeksToShow={4} />
@@ -966,6 +1198,27 @@ export default function Dashboard() {
 
       {/* Day Detail Sheet */}
       <DayDetailSheet log={detailLog} onClose={() => setDetailLog(null)} />
+
+      <div className="md:hidden fixed bottom-20 left-4 right-4 z-30 grid grid-cols-3 gap-2">
+        <button
+          onClick={() => navigate('/log?action=morning')}
+          className="rounded-xl glass-strong border border-white/60 px-2 py-2 text-xs font-semibold text-gray-700 cursor-pointer"
+        >
+          {t('dash.actionMorning')}
+        </button>
+        <button
+          onClick={() => navigate('/log?action=evening')}
+          className="rounded-xl glass-strong border border-white/60 px-2 py-2 text-xs font-semibold text-gray-700 cursor-pointer"
+        >
+          {t('dash.actionEvening')}
+        </button>
+        <button
+          onClick={() => navigate('/log?action=export')}
+          className="rounded-xl glass-strong border border-white/60 px-2 py-2 text-xs font-semibold text-gray-700 cursor-pointer"
+        >
+          {t('dash.actionExport')}
+        </button>
+      </div>
     </div>
   );
 }
