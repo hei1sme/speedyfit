@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import { useLang } from '../contexts/LangContext';
+import { TRAINING_WEEKS, type TrainingAccent } from '../content/trainingWeeks';
 
 type TabId = 'nutrition' | 'training' | 'tracking';
 
@@ -67,8 +68,35 @@ function InfoCard({ className = '', children }: { className?: string; children: 
   );
 }
 
-const LATEST_TRAINING_WEEK = 2;
-type TrainingWeek = 1 | 2;
+const LATEST_TRAINING_WEEK = TRAINING_WEEKS[TRAINING_WEEKS.length - 1].id;
+type TrainingWeek = (typeof TRAINING_WEEKS)[number]['id'];
+
+const ACCENT_STYLE: Record<TrainingAccent, {
+  border: string;
+  badge: string;
+  block: string;
+}> = {
+  indigo: {
+    border: 'border-l-indigo-400',
+    badge: 'bg-indigo-100 text-indigo-700',
+    block: 'bg-indigo-50 text-indigo-800',
+  },
+  emerald: {
+    border: 'border-l-emerald-400',
+    badge: 'bg-emerald-100 text-emerald-700',
+    block: 'bg-emerald-50 text-emerald-800',
+  },
+  amber: {
+    border: 'border-l-amber-400',
+    badge: 'bg-amber-100 text-amber-700',
+    block: 'bg-amber-50 text-amber-800',
+  },
+  sky: {
+    border: 'border-l-sky-400',
+    badge: 'bg-sky-100 text-sky-700',
+    block: 'bg-sky-50 text-sky-800',
+  },
+};
 
 /* ═══════════════ TAB 1: NUTRITION ═══════════════ */
 function NutritionGuide() {
@@ -222,241 +250,77 @@ function NutritionGuide() {
 }
 
 /* ═══════════════ TAB 2: TRAINING ═══════════════ */
-function TrainingGuideWeek1() {
+function TrainingGuide({ week }: { week: TrainingWeek }) {
+  const plan = TRAINING_WEEKS.find((w) => w.id === week);
+  if (!plan) return null;
+
   return (
-    <div>
-      {/* Overview */}
-      <InfoCard className="mb-6">
-        <p className="text-sm text-gray-600">
-          <span className="font-semibold text-gray-900">Chế độ:</span> Full-Body (3 Buổi Tạ + Tối đa 2 Buổi Cardio) &nbsp;|&nbsp;
-          <span className="font-semibold text-gray-900">Thời lượng:</span> 60–75 phút &nbsp;|&nbsp;
-          <span className="font-semibold text-gray-900">Ưu tiên:</span> Máy tập (Machines)
-        </p>
+    <div className="space-y-6">
+      <InfoCard className="border-l-4 border-l-indigo-500">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <Badge color="bg-indigo-100 text-indigo-700">Week {plan.id}</Badge>
+          <p className="text-xs font-medium text-gray-500">{plan.mode} · {plan.duration}</p>
+        </div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-1">{plan.title}</h3>
+        <p className="text-sm text-gray-700">{plan.objective}</p>
       </InfoCard>
 
-      {/* Breathing */}
-      <Section title="Cơ Chế Hít Thở (SỐNG CÒN)" icon={Wind}>
-        <InfoCard className="bg-blue-50 border-blue-200">
-          <p className="text-base font-bold text-blue-900 mb-2">
-            🧘 "Nặng Thở Ra (bằng miệng) — Nhẹ Hít Vào (bằng mũi)"
-          </p>
-          <p className="text-sm text-red-700 font-medium">
-            ⛔ CẤM KỴ: Tuyệt đối không nín thở (gồng nghẽn cổ họng) khi rướn sức — bảo vệ áp lực ổ bụng, tránh hoa mắt chóng mặt.
-          </p>
-        </InfoCard>
-      </Section>
-
-      {/* Warm-up */}
-      <Section title="Khởi Động — 5–10 Phút" icon={Timer}>
-        <InfoCard>
-          <BulletList items={[
-            'Thiết bị: Máy chạy bộ (Treadmill) hoặc Xe đạp.',
-            'Cách làm: Đi bộ tốc độ chậm (4–5), chỉnh độ dốc nhẹ.',
-            'Nhịp thở: Hít thở sâu, đều đặn tự nhiên.',
-          ]} />
-        </InfoCard>
-      </Section>
-
-      {/* Resistance */}
-      <Section title="Tập Kháng Lực Toàn Thân — 40–45 Phút" icon={Dumbbell}>
-        <p className="text-xs text-gray-500 mb-3 italic">
-          Ghi chú: Điền mức tạ (kg) vào buổi sau để biết đường tăng tạ.
-        </p>
-        <div className="space-y-3">
-          {[
-            {
-              num: 1,
-              muscle: 'ĐÙI & MÔNG',
-              name: 'Máy Đạp Đùi (Leg Press)',
-              breathOut: 'Đạp tung máy ra',
-              breathIn: 'Từ từ co chân lại',
-              sets: '3 Hiệp × 10–12 Lần',
-            },
-            {
-              num: 2,
-              muscle: 'LƯNG RỘNG',
-              name: 'Máy Kéo Xô (Lat Pulldown)',
-              breathOut: 'Kéo thanh đòn xuống ngực',
-              breathIn: 'Nhả thanh đòn đi lên',
-              sets: '3 Hiệp × 10–12 Lần',
-            },
-            {
-              num: 3,
-              muscle: 'NGỰC & VAI',
-              name: 'Máy Đẩy Ngực Ngồi (Seated Chest Press)',
-              breathOut: 'Đẩy tay cầm về phía trước',
-              breathIn: 'Từ từ thu tay về',
-              sets: '3 Hiệp × 10–12 Lần',
-            },
-            {
-              num: 4,
-              muscle: 'LƯNG GIỮA',
-              name: 'Máy Chèo Thuyền (Seated Cable Row)',
-              breathOut: 'Kéo tay cầm sát bụng',
-              breathIn: 'Nhả tay cầm dãn về trước',
-              sets: '3 Hiệp × 10–12 Lần',
-            },
-          ].map((ex) => (
-            <InfoCard key={ex.num} className="border-l-4 border-l-indigo-400">
-              <div className="flex items-baseline gap-2 mb-1">
-                <Badge color="bg-indigo-100 text-indigo-700">{ex.num}</Badge>
-                <span className="text-xs font-bold text-gray-500 uppercase">{ex.muscle}</span>
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-1">{ex.name}</h4>
-              <p className="text-xs text-gray-500">{ex.sets}</p>
-              <div className="mt-2 flex gap-3 text-xs">
-                <span className="text-red-600">📤 THỞ RA: {ex.breathOut}</span>
-                <span className="text-blue-600">📥 HÍT VÀO: {ex.breathIn}</span>
-              </div>
-            </InfoCard>
-          ))}
-
-          {/* Core */}
-          <InfoCard className="border-l-4 border-l-amber-400">
-            <div className="flex items-baseline gap-2 mb-1">
-              <Badge color="bg-amber-100 text-amber-700">5</Badge>
-              <span className="text-xs font-bold text-gray-500 uppercase">BÀI TẬP BỤNG (Core)</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 text-sm">
-              <div className="p-2 bg-indigo-50 rounded">
-                <p className="font-semibold text-indigo-700">Hưng — Plank tĩnh</p>
-                <p className="text-xs text-gray-600">Giữ tư thế, hít thở nông & đều. 3 Hiệp × 45 giây.</p>
-              </div>
-              <div className="p-2 bg-emerald-50 rounded">
-                <p className="font-semibold text-emerald-700">Nga — V-Crunches / Plank gối</p>
-                <p className="text-xs text-gray-600">Cuộn người lên thở ra, hạ người hít vào. 3 Hiệp.</p>
-              </div>
-            </div>
+      {plan.caution && plan.caution.length > 0 && (
+        <Section title="Lưu ý kỹ thuật" icon={Wind}>
+          <InfoCard className="bg-red-50 border-red-200">
+            <BulletList items={plan.caution} />
           </InfoCard>
-        </div>
-      </Section>
+        </Section>
+      )}
 
-      {/* Cardio */}
-      <Section title="Cardio Đốt Mỡ — 10–15 Phút" icon={Bike}>
-        <InfoCard className="bg-green-50 border-green-200">
-          <BulletList items={[
-            'Thiết bị: Xe đạp quạt gió (Air Bike / Assault Bike) hoặc Máy đạp xe tựa lưng.',
-            'Hai người thay phiên đạp (hoặc 2 máy cạnh nhau).',
-            'Nhịp độ: Zone 2 Cardio — hơi thở dốc nhẹ nhưng vẫn nói chuyện thành câu ngắn. KHÔNG đạp đến kiệt sức.',
-          ]} />
-        </InfoCard>
-      </Section>
-    </div>
-  );
-}
-
-function TrainingGuideWeek2() {
-  const exercises = [
-    {
-      num: 1,
-      exercise: 'May Dap Dui (Leg Press)',
-      group: 'Dui, Mong',
-      setsReps: '3 hiep',
-      hung: '110 kg (8-10 reps)',
-      nga: '5 kg (12 reps)',
-      note: 'Tho ra khi dap. Nga: khong khoa goi, huong goi theo mui chan.',
-    },
-    {
-      num: 2,
-      exercise: 'May Keo Xa (Lat Pulldown)',
-      group: 'Lung rong',
-      setsReps: '3 hiep',
-      hung: '40 kg (8-10 reps)',
-      nga: '17.5-20 kg (8-10 reps)',
-      note: 'Tho ra khi keo xuong nguc. Uon nguc, khong giat lung.',
-    },
-    {
-      num: 3,
-      exercise: 'May Ep/Day Nguc (Pec Deck/Chest Press)',
-      group: 'Nguc, Vai',
-      setsReps: '3 hiep',
-      hung: '57.5 kg (8-10 reps)',
-      nga: '10 kg (10-12 reps)',
-      note: 'Tho ra khi ep/day. Mo bien do tay truoc khi ep lai.',
-    },
-    {
-      num: 4,
-      exercise: 'May Cheo Thuyen (Seated Cable Row)',
-      group: 'Lung giua',
-      setsReps: '3 hiep',
-      hung: '35-40 kg (8-12 reps)',
-      nga: '10-15 kg (10-12 reps)',
-      note: 'Tho ra khi keo vao bung. Ep hai ba vai o diem cuoi.',
-    },
-    {
-      num: 5,
-      exercise: 'Keo Cap Tay Sau (Triceps Pushdown)',
-      group: 'Bap tay sau',
-      setsReps: '3 hiep',
-      hung: 'Tuy suc chon ta',
-      nga: '10-11 kg (15-20 reps)',
-      note: 'Tho ra khi nhan cap. Giu cui cho sat mang suon.',
-    },
-    {
-      num: 6,
-      exercise: 'Core/Glute tren tham',
-      group: 'Bung, Mong',
-      setsReps: '3 hiep',
-      hung: 'Plank 45-60 giay',
-      nga: 'Glute Bridge 15-20 reps',
-      note: 'Hung: tho nong deu. Nga: day hong tho ra, ha xuong hit vao.',
-    },
-  ];
-
-  return (
-    <div>
-      <InfoCard className="mb-6 bg-amber-50 border-amber-200">
-        <p className="text-sm text-amber-900">
-          <strong>Muc tieu Week 2:</strong> Hung tang ta theo progressive overload, Nga uu tien form an toan goi va toning bap tay/dui.
-        </p>
-      </InfoCard>
-
-      <Section title="Khoi Dong (5-10 phut)" icon={Timer}>
+      <Section title="Khởi động" icon={Timer}>
         <InfoCard>
-          <BulletList items={[
-            'May di bo hoac xe dap.',
-            'Nga: khong chinh do doc treadmill.',
-            'Khoi dong nhe de vao nhip truoc khi nang ta.',
-          ]} />
+          <BulletList items={plan.warmup} />
         </InfoCard>
       </Section>
 
-      <Section title="Bang Bai Tap Khang Luc - Week 2" icon={Dumbbell}>
+      <Section title="Bài tập kháng lực" icon={Dumbbell}>
         <div className="space-y-3">
-          {exercises.map((ex) => (
-            <InfoCard key={ex.num} className="border-l-4 border-l-indigo-400">
-              <div className="flex items-baseline gap-2 mb-1">
-                <Badge color="bg-indigo-100 text-indigo-700">{ex.num}</Badge>
-                <span className="text-xs font-bold text-gray-500 uppercase">{ex.group}</span>
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-2">{ex.exercise}</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-                <div className="p-2 rounded bg-indigo-50 text-indigo-800">
-                  <p className="font-semibold">Hung</p>
-                  <p>{ex.hung}</p>
+          {plan.exercises.map((ex) => {
+            const accent = ACCENT_STYLE[ex.accent ?? 'indigo'];
+            return (
+              <InfoCard key={ex.id} className={`border-l-4 ${accent.border}`}>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <Badge color={accent.badge}>{ex.id}</Badge>
+                  <span className="text-xs font-bold text-gray-500 uppercase">{ex.muscle}</span>
                 </div>
-                <div className="p-2 rounded bg-emerald-50 text-emerald-800">
-                  <p className="font-semibold">Nga</p>
-                  <p>{ex.nga}</p>
+                <h4 className="font-semibold text-gray-900 mb-2">{ex.name}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 rounded bg-indigo-50 text-indigo-800">
+                    <p className="font-semibold">Hưng</p>
+                    <p>{ex.hungTarget}</p>
+                  </div>
+                  <div className="p-2 rounded bg-emerald-50 text-emerald-800">
+                    <p className="font-semibold">Nga</p>
+                    <p>{ex.ngaTarget}</p>
+                  </div>
+                  <div className={`p-2 rounded ${accent.block}`}>
+                    <p className="font-semibold">Volume</p>
+                    <p>{ex.sets}</p>
+                  </div>
                 </div>
-                <div className="p-2 rounded bg-gray-50 text-gray-700">
-                  <p className="font-semibold">Sets</p>
-                  <p>{ex.setsReps}</p>
-                </div>
-              </div>
-              <p className="mt-2 text-xs text-gray-600">{ex.note}</p>
-            </InfoCard>
-          ))}
+                <p className="mt-2 text-xs text-gray-600">{ex.breathCue}</p>
+                <p className="text-xs text-gray-500">{ex.coachingNote}</p>
+              </InfoCard>
+            );
+          })}
         </div>
       </Section>
 
-      <Section title="Finisher va Recovery" icon={Bike}>
+      <Section title="Cardio kết thúc" icon={Bike}>
         <InfoCard className="bg-green-50 border-green-200">
-          <BulletList items={[
-            'Cardio 10-15 phut: Air Bike hoac Elliptical o cuong do Zone 2.',
-            'Gian co 5 phut sau tap.',
-            'Nga: bat buoc gian bap chan va dui truoc/sau, giu 20-30 giay moi ben.',
-          ]} />
+          <BulletList items={plan.finisher} />
+        </InfoCard>
+      </Section>
+
+      <Section title="Giãn cơ & Recovery" icon={Bike}>
+        <InfoCard className="bg-sky-50 border-sky-200">
+          <BulletList items={plan.recovery} />
         </InfoCard>
       </Section>
     </div>
@@ -556,6 +420,8 @@ export default function Guides() {
   const { t } = useLang();
   const [activeTab, setActiveTab] = useState<TabId>('nutrition');
   const [trainingWeek, setTrainingWeek] = useState<TrainingWeek>(LATEST_TRAINING_WEEK);
+  const minTrainingWeek = TRAINING_WEEKS[0].id;
+  const maxTrainingWeek = LATEST_TRAINING_WEEK;
 
   const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: 'nutrition', label: t('guides.tab1'), icon: ChefHat },
@@ -600,8 +466,8 @@ export default function Guides() {
         <div>
           <div className="glass rounded-2xl p-2 mb-6 flex items-center justify-between gap-2">
             <button
-              onClick={() => setTrainingWeek((w) => (w === 1 ? 1 : (w - 1) as TrainingWeek))}
-              disabled={trainingWeek === 1}
+              onClick={() => setTrainingWeek((w) => (w === minTrainingWeek ? minTrainingWeek : (w - 1) as TrainingWeek))}
+              disabled={trainingWeek === minTrainingWeek}
               className="min-h-10 px-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
             >
               <ChevronLeft size={16} />
@@ -609,30 +475,25 @@ export default function Guides() {
             </button>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setTrainingWeek(1)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer ${
-                  trainingWeek === 1 ? 'bg-indigo-500/20 text-indigo-700' : 'text-gray-500 hover:bg-white/50'
-                }`}
-              >
-                {t('guides.week1')}
-              </button>
-              <button
-                onClick={() => setTrainingWeek(2)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer ${
-                  trainingWeek === 2 ? 'bg-indigo-500/20 text-indigo-700' : 'text-gray-500 hover:bg-white/50'
-                }`}
-              >
-                {t('guides.week2')}
-              </button>
+              {TRAINING_WEEKS.map((doc) => (
+                <button
+                  key={doc.id}
+                  onClick={() => setTrainingWeek(doc.id)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer ${
+                    trainingWeek === doc.id ? 'bg-indigo-500/20 text-indigo-700' : 'text-gray-500 hover:bg-white/50'
+                  }`}
+                >
+                  {t('guides.week')} {doc.id}
+                </button>
+              ))}
               {trainingWeek === LATEST_TRAINING_WEEK && (
                 <Badge color="bg-emerald-100 text-emerald-700">{t('guides.latest')}</Badge>
               )}
             </div>
 
             <button
-              onClick={() => setTrainingWeek((w) => (w === LATEST_TRAINING_WEEK ? LATEST_TRAINING_WEEK : (w + 1) as TrainingWeek))}
-              disabled={trainingWeek === LATEST_TRAINING_WEEK}
+              onClick={() => setTrainingWeek((w) => (w === maxTrainingWeek ? maxTrainingWeek : (w + 1) as TrainingWeek))}
+              disabled={trainingWeek === maxTrainingWeek}
               className="min-h-10 px-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1"
             >
               Next
@@ -640,8 +501,7 @@ export default function Guides() {
             </button>
           </div>
 
-          {trainingWeek === 1 && <TrainingGuideWeek1 />}
-          {trainingWeek === 2 && <TrainingGuideWeek2 />}
+          <TrainingGuide week={trainingWeek} />
         </div>
       )}
       {activeTab === 'tracking' && <TrackingGuide />}
